@@ -1,0 +1,10 @@
+node_modules/
+.expo/
+web-build/
+.vscode/
+.gemini/
+.system_generated/
+npm
+package-lock.json
+yarn.lock
+*.log

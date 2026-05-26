@@ -1,0 +1,2360 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>💅 NailAR Pro — AI Virtual Try-On</title>
+  <meta name="description" content="Professional-grade real-time AI-powered nail art virtual try-on using MediaPipe hand tracking and perspective-correct rendering." />
+  
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,900;1,700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+
+  <!-- MediaPipe CDN dependencies -->
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
+
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:        #07070C;
+      --surface:   rgba(18, 18, 32, 0.85);
+      --card:      rgba(30, 30, 52, 0.70);
+      --pink-hot:  #FF2D78;
+      --pink-neon: #FF6EB4;
+      --pink-soft: #FFB3D1;
+      --border:    rgba(255, 45, 120, 0.35);
+      --glow:      rgba(255, 45, 120, 0.22);
+      --text:      #FFE4F0;
+      --muted:     #C084A8;
+      --radius:    20px;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Inter', sans-serif;
+      height: 100dvh;
+      overflow: hidden;
+      user-select: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    /* ── SCREEN SYSTEM ────────────────────────────────── */
+    .screen {
+      display: none;
+      flex-direction: column;
+      height: 100dvh;
+      width: 100%;
+      position: absolute;
+      inset: 0;
+    }
+    .screen.active {
+      display: flex;
+    }
+
+    /* ── REUSABLE UI ELEMENTS ─────────────────────────── */
+    .glass {
+      background: var(--surface);
+      backdrop-filter: blur(20px) saturate(180%);
+      -webkit-backdrop-filter: blur(20px) saturate(180%);
+      border: 1px solid var(--border);
+      box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.5);
+    }
+
+    .btn-pink {
+      background: linear-gradient(135deg, var(--pink-hot), #E91E63);
+      color: #fff;
+      border: none;
+      padding: 14px 28px;
+      border-radius: 50px;
+      font-size: 15px;
+      font-weight: 700;
+      font-family: 'Inter', sans-serif;
+      cursor: pointer;
+      box-shadow: 0 6px 20px rgba(255, 45, 120, 0.40);
+      transition: all 0.25s cubic-bezier(0.25, 0.8, 0.25, 1);
+    }
+    .btn-pink:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 26px rgba(255, 45, 120, 0.55);
+    }
+    .btn-pink:active {
+      transform: translateY(0);
+    }
+
+    .icon-btn {
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      font-size: 16px;
+      color: var(--pink-soft);
+      transition: all 0.22s ease;
+    }
+    .icon-btn:hover {
+      border-color: var(--pink-hot);
+      background: rgba(255, 45, 120, 0.15);
+      box-shadow: 0 0 12px var(--glow);
+    }
+
+    /* ── NAVIGATION ───────────────────────────────────── */
+    .bottom-nav {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      z-index: 50;
+      padding: 0 24px 24px;
+      pointer-events: none;
+    }
+    .bottom-nav-inner {
+      pointer-events: auto;
+      border-radius: 40px;
+      display: flex;
+      justify-content: space-around;
+      padding: 8px 0;
+    }
+    .nav-tab {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+      padding: 6px 24px;
+      cursor: pointer;
+      border: none;
+      background: none;
+      color: var(--muted);
+      font-family: 'Inter', sans-serif;
+      font-size: 10px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      transition: all 0.25s ease;
+    }
+    .nav-tab.active {
+      color: var(--pink-hot);
+    }
+    .nav-tab-icon {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 15px;
+      transition: all 0.25s ease;
+    }
+    .nav-tab.active .nav-tab-icon {
+      background: rgba(255, 45, 120, 0.15);
+      border: 1px solid var(--pink-hot);
+      box-shadow: 0 0 12px var(--pink-hot);
+    }
+
+    /* ══════════════════════════════════════════════════
+       EXPLORE / HOME SCREEN
+    ═══════════════════════════════════════════════════ */
+    #screen-home {
+      background: radial-gradient(circle at top right, #1f0b18, var(--bg) 60%);
+      padding-bottom: 110px;
+    }
+    .home-header {
+      padding: 30px 24px 15px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .home-title {
+      font-family: 'Playfair Display', serif;
+      font-size: 36px;
+      font-weight: 900;
+      background: linear-gradient(135deg, #FFF, var(--pink-soft));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      letter-spacing: -0.5px;
+    }
+    .home-sub {
+      font-size: 11px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      margin-top: 4px;
+      font-weight: 500;
+    }
+    .brand-logo {
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--pink-hot), var(--pink-neon));
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 22px;
+      box-shadow: 0 0 15px var(--glow);
+    }
+
+    .hero-banner {
+      margin: 10px 24px 20px;
+      border-radius: var(--radius);
+      padding: 20px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      background: linear-gradient(135deg, rgba(255, 45, 120, 0.18), rgba(18, 18, 32, 0.60));
+    }
+    .hero-banner:hover {
+      transform: translateY(-2px);
+      border-color: var(--pink-neon);
+      box-shadow: 0 8px 24px var(--glow);
+    }
+    .hero-icon {
+      font-size: 32px;
+      animation: pulseEmoji 2s infinite ease-in-out;
+    }
+    @keyframes pulseEmoji {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.12); }
+    }
+    .hero-text h3 {
+      font-family: 'Playfair Display', serif;
+      font-size: 20px;
+      color: #fff;
+    }
+    .hero-text p {
+      font-size: 12px;
+      color: var(--pink-soft);
+      margin-top: 4px;
+    }
+    .hero-arrow {
+      margin-left: auto;
+      color: var(--pink-hot);
+      font-size: 20px;
+      font-weight: bold;
+    }
+
+    .home-scroll {
+      overflow-y: auto;
+      padding: 0 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+      flex: 1;
+      scrollbar-width: none;
+    }
+    .home-scroll::-webkit-scrollbar { display: none; }
+    
+    .section-title {
+      font-size: 14px;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      color: var(--pink-soft);
+      margin-bottom: 8px;
+      font-weight: 600;
+    }
+
+    .nail-card {
+      background: var(--card);
+      border-radius: 24px;
+      overflow: hidden;
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      box-shadow: 0 6px 18px rgba(0, 0, 0, 0.2);
+      transition: all 0.3s ease;
+    }
+    .nail-card:hover {
+      border-color: var(--border);
+      transform: translateY(-2px);
+    }
+    .nail-card-hero {
+      width: 100%;
+      height: 190px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 70px;
+      position: relative;
+      background: linear-gradient(135deg, #16162a, #2b1328);
+    }
+    .nail-card-hero::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(to top, rgba(7,7,12,0.85), transparent);
+    }
+    .nail-card-footer {
+      padding: 16px 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: rgba(10, 10, 18, 0.90);
+    }
+    .nail-card-title {
+      font-family: 'Playfair Display', serif;
+      font-size: 18px;
+      font-weight: 700;
+      color: #fff;
+    }
+    .nail-card-tag {
+      font-size: 10px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-top: 3px;
+    }
+
+    /* ── TRY-ON SCREEN (Core AR) ────────────────────────── */
+    #screen-tryon {
+      background: #000;
+    }
+    #camera-video {
+      display: none; /* read frame by frame programmatically */
+    }
+    #ar-canvas {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    /* Permission overlay */
+    #perm-overlay {
+      position: absolute;
+      inset: 0;
+      z-index: 100;
+      background: #090910;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+    #perm-overlay.hidden { display: none !important; }
+    .perm-card {
+      border-radius: 28px;
+      padding: 36px 24px;
+      text-align: center;
+      max-width: 360px;
+      width: 100%;
+    }
+    .perm-icon {
+      font-size: 60px;
+      margin-bottom: 20px;
+      display: inline-block;
+      animation: pulseGlow 2.5s infinite;
+    }
+    @keyframes pulseGlow {
+      0%, 100% { transform: scale(1); filter: drop-shadow(0 0 5px rgba(255,45,120,0.2)); }
+      50% { transform: scale(1.08); filter: drop-shadow(0 0 20px rgba(255,45,120,0.7)); }
+    }
+    .perm-title {
+      font-family: 'Playfair Display', serif;
+      font-size: 26px;
+      color: #fff;
+      margin-bottom: 12px;
+    }
+    .perm-body {
+      font-size: 14px;
+      color: var(--pink-soft);
+      line-height: 1.6;
+      margin-bottom: 24px;
+    }
+
+    /* AR Top bar overlay */
+    #tryon-topbar {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 30;
+      padding: 20px 24px;
+      background: linear-gradient(to bottom, rgba(7,7,12,0.92), rgba(7,7,12,0));
+    }
+    .topbar-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+    }
+    .topbar-logo {
+      font-family: 'Playfair Display', serif;
+      font-size: 24px;
+      font-weight: 900;
+      color: #fff;
+    }
+    .topbar-logo span {
+      color: var(--pink-hot);
+    }
+    .topbar-status {
+      font-size: 9px;
+      color: var(--pink-soft);
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      margin-top: 3px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .status-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--pink-hot);
+      box-shadow: 0 0 8px var(--pink-hot);
+      animation: blinker 1.5s infinite;
+    }
+
+    /* AR Control Overlay Panel */
+    .ar-controls-panel {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-top: 12px;
+      align-items: flex-start;
+    }
+    .ar-sliders-row {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .ar-pill {
+      background: rgba(18, 18, 32, 0.70);
+      backdrop-filter: blur(15px);
+      -webkit-backdrop-filter: blur(15px);
+      border: 1px solid rgba(255, 45, 120, 0.25);
+      border-radius: 30px;
+      padding: 6px 14px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .ar-slider-label {
+      font-size: 9px;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      color: var(--pink-soft);
+      font-weight: 700;
+    }
+    .ar-slider {
+      width: 65px;
+      accent-color: var(--pink-hot);
+      cursor: pointer;
+      height: 4px;
+    }
+
+    /* Quick finger selection pills */
+    .finger-pills-row {
+      display: flex;
+      gap: 5px;
+      overflow-x: auto;
+      scrollbar-width: none;
+      padding: 2px 0;
+      width: 100%;
+    }
+    .finger-pills-row::-webkit-scrollbar { display: none; }
+    .finger-pill {
+      font-size: 9px;
+      padding: 4px 10px;
+      border-radius: 20px;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      background: rgba(255,255,255,0.05);
+      color: var(--muted);
+      cursor: pointer;
+      text-transform: capitalize;
+      font-weight: 600;
+      transition: all 0.2s ease;
+      white-space: nowrap;
+    }
+    .finger-pill.active {
+      border-color: var(--pink-hot);
+      background: rgba(255, 45, 120, 0.22);
+      color: #fff;
+      box-shadow: 0 0 8px rgba(255, 45, 120, 0.35);
+    }
+
+    /* Nail Shape selector pills */
+    .shape-pills-row {
+      display: flex;
+      gap: 5px;
+      overflow-x: auto;
+      scrollbar-width: none;
+      padding: 2px 0;
+      width: 100%;
+      align-items: center;
+    }
+    .shape-pills-row::-webkit-scrollbar { display: none; }
+    .shape-pill {
+      font-size: 9px;
+      padding: 4px 10px;
+      border-radius: 20px;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      background: rgba(255,255,255,0.05);
+      color: var(--muted);
+      cursor: pointer;
+      text-transform: capitalize;
+      font-weight: 600;
+      transition: all 0.2s ease;
+      white-space: nowrap;
+    }
+    .shape-pill.active {
+      border-color: #FFD700;
+      background: rgba(255, 215, 0, 0.18);
+      color: #fff;
+      box-shadow: 0 0 8px rgba(255, 215, 0, 0.40);
+    }
+
+    /* AR Bottom Panel */
+    #tryon-bottom {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      z-index: 30;
+      padding: 16px 0 28px;
+      background: linear-gradient(to top, rgba(7,7,12,0.96) 80%, rgba(7,7,12,0));
+      border-top: 1px solid rgba(255, 255, 255, 0.04);
+    }
+    
+    .carousel-section {
+      margin-bottom: 12px;
+    }
+
+    /* Shutter Controls */
+    .shutter-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 44px;
+      margin-top: 4px;
+    }
+    
+    .shutter-btn-wrap {
+      width: 76px;
+      height: 76px;
+      border-radius: 50%;
+      border: 3px solid var(--pink-hot);
+      background: rgba(255, 45, 120, 0.08);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      box-shadow: 0 0 20px var(--glow), inset 0 0 12px var(--glow);
+      transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+    .shutter-btn-wrap:hover {
+      transform: scale(1.06);
+    }
+    .shutter-btn-wrap:active {
+      transform: scale(0.92);
+    }
+    .shutter-inner {
+      width: 58px;
+      height: 58px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--pink-hot), var(--pink-neon));
+      box-shadow: 0 0 15px var(--pink-hot);
+    }
+
+    /* ── DESIGN GALLERY SCREEN ────────────────────────── */
+    #screen-design {
+      background: radial-gradient(circle at bottom left, #120a1f, var(--bg) 70%);
+      padding-bottom: 110px;
+    }
+    .design-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      padding: 0 24px;
+      overflow-y: auto;
+      flex: 1;
+      scrollbar-width: none;
+    }
+    .design-grid::-webkit-scrollbar { display: none; }
+
+    .design-card {
+      background: var(--card);
+      border-radius: 20px;
+      border: 1px solid rgba(255, 255, 255, 0.04);
+      overflow: hidden;
+      cursor: pointer;
+      transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+    }
+    .design-card:hover {
+      transform: translateY(-4px);
+      border-color: var(--border);
+      box-shadow: 0 8px 24px var(--glow);
+    }
+    .design-img-frame {
+      height: 130px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(255, 255, 255, 0.02);
+      position: relative;
+    }
+    .design-img-frame canvas {
+      width: 60px;
+      height: 90px;
+      object-fit: cover;
+      border-radius: 12px;
+      box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4);
+      transform: rotate(-5deg);
+    }
+    .design-info {
+      padding: 12px 16px;
+      background: rgba(10, 10, 18, 0.80);
+      border-top: 1px solid rgba(255, 255, 255, 0.03);
+    }
+    .design-name {
+      font-size: 13px;
+      font-weight: 700;
+      color: #fff;
+    }
+    .design-tag {
+      font-size: 10px;
+      color: var(--pink-soft);
+      margin-top: 2px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      font-weight: 600;
+    }
+
+    /* ── PHOTO PREVIEW OVERLAY ───────────────────────── */
+    #preview-overlay {
+      position: absolute;
+      inset: 0;
+      z-index: 80;
+      background: var(--bg);
+      display: none;
+      flex-direction: column;
+      animation: slideIn 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    #preview-overlay.active {
+      display: flex;
+    }
+    @keyframes slideIn {
+      from { transform: translateY(100%); }
+      to { transform: translateY(0); }
+    }
+    .preview-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 20px 24px;
+    }
+    .preview-title {
+      font-family: 'Playfair Display', serif;
+      font-size: 24px;
+      color: #fff;
+    }
+    .preview-frame {
+      flex: 1;
+      margin: 0 24px 16px;
+      border-radius: 28px;
+      overflow: hidden;
+      border: 1px solid var(--border);
+      position: relative;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.6);
+      background: #000;
+    }
+    #preview-img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+    }
+    .preview-corner {
+      position: absolute;
+      width: 24px;
+      height: 24px;
+      border-color: var(--pink-hot);
+    }
+    .preview-corner-tl { top:16px; left:16px; border-top: 3px solid; border-left: 3px solid; border-radius: 6px 0 0 0; }
+    .preview-corner-tr { top:16px; right:16px; border-top: 3px solid; border-right: 3px solid; border-radius: 0 6px 0 0; }
+    .preview-corner-bl { bottom:16px; left:16px; border-bottom: 3px solid; border-left: 3px solid; border-radius: 0 0 0 6px; }
+    .preview-corner-br { bottom:16px; right:16px; border-bottom: 3px solid; border-right: 3px solid; border-radius: 0 0 6px 0; }
+    
+    .preview-actions {
+      display: flex;
+      justify-content: space-around;
+      padding: 16px 24px 36px;
+      gap: 12px;
+    }
+    .preview-btn {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      border-radius: 20px;
+      padding: 12px;
+      cursor: pointer;
+      font-family: 'Inter', sans-serif;
+      font-size: 11px;
+      color: var(--pink-soft);
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      transition: all 0.22s ease;
+    }
+    .preview-btn:hover {
+      border-color: var(--pink-hot);
+      background: rgba(255, 45, 120, 0.10);
+    }
+    .preview-btn-icon {
+      font-size: 20px;
+    }
+    .preview-btn.primary {
+      background: var(--pink-hot);
+      border-color: var(--pink-hot);
+      color: #fff;
+      box-shadow: 0 6px 20px rgba(255,45,120,0.4);
+    }
+    .preview-btn.primary:hover {
+      box-shadow: 0 8px 26px rgba(255,45,120,0.55);
+      transform: translateY(-1px);
+    }
+
+    /* ── CAROUSEL DESIGN PICKER ───────────────────────── */
+    .nail-carousel-container {
+      display: flex;
+      gap: 12px;
+      overflow-x: auto;
+      padding: 0 24px 8px;
+      scrollbar-width: none;
+      -ms-overflow-style: none;
+    }
+    .nail-carousel-container::-webkit-scrollbar { display: none; }
+    
+    .carousel-item {
+      flex-shrink: 0;
+      width: 66px;
+      background: rgba(14, 14, 28, 0.75);
+      border: 2px solid transparent;
+      border-radius: 18px;
+      padding: 6px 5px 8px;
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.28s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+      position: relative;
+    }
+    .carousel-item.selected {
+      transform: translateY(-4px);
+      box-shadow: 0 6px 20px var(--glow);
+    }
+    .carousel-thumb-box {
+      width: 52px;
+      height: 78px;
+      border-radius: 12px;
+      overflow: hidden;
+      border: 1px solid rgba(255,255,255,0.06);
+      background: #11111e;
+      position: relative;
+    }
+    .carousel-thumb-box img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+    .carousel-check {
+      position: absolute;
+      top: 4px;
+      right: 4px;
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 8px;
+      color: #fff;
+      font-weight: 800;
+      box-shadow: 0 0 6px rgba(0,0,0,0.5);
+    }
+    .carousel-label {
+      font-size: 8px;
+      color: var(--muted);
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
+      text-align: center;
+      line-height: 1.2;
+      max-width: 54px;
+    }
+    .carousel-item.selected .carousel-label {
+      color: var(--pink-soft);
+    }
+
+    /* Toast messaging */
+    #toast {
+      position: fixed;
+      bottom: 125px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(18, 18, 32, 0.95);
+      border: 1px solid var(--border);
+      border-radius: 30px;
+      padding: 10px 24px;
+      font-size: 13px;
+      color: var(--pink-soft);
+      font-weight: 600;
+      box-shadow: 0 8px 30px rgba(0, 0, 0, 0.6);
+      z-index: 999;
+      display: none;
+      white-space: nowrap;
+      animation: toastIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+    @keyframes toastIn {
+      from { transform: translate(-50%, 15px); opacity: 0; }
+      to { transform: translate(-50%, 0); opacity: 1; }
+    }
+
+    /* Screen camera flash */
+    #flash-effect {
+      position: absolute;
+      inset: 0;
+      z-index: 90;
+      background: #fff;
+      opacity: 0;
+      pointer-events: none;
+    }
+    .flash-active {
+      animation: flashAnim 0.35s ease-out;
+    }
+    @keyframes flashAnim {
+      0% { opacity: 0.95; }
+      100% { opacity: 0; }
+    }
+
+    /* Spinner loader */
+    .spinner {
+      width: 32px;
+      height: 32px;
+      border: 3px solid rgba(255, 45, 120, 0.15);
+      border-radius: 50%;
+      border-top-color: var(--pink-hot);
+      animation: spin 1s infinite linear;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+
+  <!-- ── HIDDEN UPLOAD INPUT ── -->
+  <input type="file" id="hand-upload-input" accept="image/*" style="display: none;" onchange="handleHandUpload(event)" />
+
+  <!-- ── FLASH EFFECT ── -->
+  <div id="flash-effect"></div>
+
+  <!-- ── TOAST ── -->
+  <div id="toast"></div>
+
+  <!-- ── 1. EXPLORE SCREEN ────────────────────────────── -->
+  <div id="screen-home" class="screen active">
+    <div class="home-header">
+      <div>
+        <div class="home-title">Explore</div>
+        <div class="home-sub">Virtual Nail Studio</div>
+      </div>
+      <div class="brand-logo">💅</div>
+    </div>
+
+    <div class="hero-banner glass" onclick="switchTab('tryon')">
+      <span class="hero-icon">✨</span>
+      <div class="hero-text">
+        <h3>Live AI Try-On</h3>
+        <p>Overlay virtual designs onto your fingers in real-time</p>
+      </div>
+      <span class="hero-arrow">›</span>
+    </div>
+
+    <div class="home-scroll">
+      <div class="section-title">Trending Styles</div>
+      
+      <div class="nail-card" onclick="goTryonWithDesign('hotpink')">
+        <div class="nail-card-hero" style="background: linear-gradient(135deg, #1b0a23, #FF2D78);">💖</div>
+        <div class="nail-card-footer">
+          <div>
+            <div class="nail-card-title">Hot Pink Gel</div>
+            <div class="nail-card-tag">Trending · Neon finish</div>
+          </div>
+          <button class="btn-pink" style="padding: 10px 20px; font-size: 12px;">Try On ✨</button>
+        </div>
+      </div>
+
+      <div class="nail-card" onclick="goTryonWithDesign('glazeddonut')">
+        <div class="nail-card-hero" style="background: linear-gradient(135deg, #2b1d28, #fdf5f2);">🍩</div>
+        <div class="nail-card-footer">
+          <div>
+            <div class="nail-card-title">Hailey Glazed Donut</div>
+            <div class="nail-card-tag">Viral · Pearlescent sheen</div>
+          </div>
+          <button class="btn-pink" style="padding: 10px 20px; font-size: 12px;">Try On ✨</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Bottom Nav -->
+    <div class="bottom-nav">
+      <div class="bottom-nav-inner glass">
+        <button class="nav-tab active" onclick="switchTab('home')">
+          <div class="nav-tab-icon">🌐</div>
+          <span>Explore</span>
+        </button>
+        <button class="nav-tab" onclick="switchTab('tryon')">
+          <div class="nav-tab-icon">💅</div>
+          <span>Try On</span>
+        </button>
+        <button class="nav-tab" onclick="switchTab('design')">
+          <div class="nav-tab-icon">🎨</div>
+          <span>Designs</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── 2. TRY-ON SCREEN (No Bottom Nav to prevent cutoff) ────────────────────────────── -->
+  <div id="screen-tryon" class="screen">
+    <!-- Camera video element (hidden, processed in JS) -->
+    <video id="camera-video" autoplay playsinline muted></video>
+
+    <!-- Main AR Pipeline Canvas -->
+    <canvas id="ar-canvas"></canvas>
+
+    <!-- Permission / Loading Overlay -->
+    <div id="perm-overlay">
+      <div class="perm-card glass">
+        <div class="perm-icon">📸</div>
+        <h2 class="perm-title">Camera & Photo</h2>
+        <p class="perm-body">
+          Select live camera tracking, or upload a photo of your hand from your device to overlay designs instantly.
+        </p>
+        <button class="btn-pink w-full" id="grant-btn" onclick="startCameraPipeline()">Enable Camera Live ✨</button>
+        <div style="margin: 14px 0 8px; color: var(--muted); font-size: 10px; text-transform: uppercase; letter-spacing: 1px; font-weight: 700;">— or —</div>
+        <button class="btn-pink w-full" onclick="triggerImageUpload()" style="background: rgba(255, 255, 255, 0.08); border: 1px solid rgba(255, 255, 255, 0.15); box-shadow: none;">Upload Photo 📤</button>
+      </div>
+    </div>
+
+    <!-- Top Overlay bar -->
+    <div id="tryon-topbar">
+      <div class="topbar-row">
+        <div style="display: flex; align-items: center; gap: 12px;">
+          <!-- Exit arrow -->
+          <button class="icon-btn" onclick="switchTab('home')" style="width: 36px; height: 36px; font-size: 14px;" title="Go Back">←</button>
+          <div>
+            <div class="topbar-logo">Nail<span>AR</span> Pro</div>
+            <div class="topbar-status">
+              <span class="status-dot"></span>
+              <span id="pipeline-status">Initializing AI Engine...</span>
+            </div>
+          </div>
+        </div>
+        <div style="display: flex; gap: 8px;">
+          <button class="icon-btn" id="cam-mode-btn" onclick="switchToCameraMode()" title="Switch to Live Camera" style="display: none;">📷</button>
+          <button class="icon-btn" onclick="triggerImageUpload()" title="Upload Hand Photo">📤</button>
+          <button class="icon-btn" id="flip-btn-ar" onclick="flipCamera()" title="Flip Camera">🔄</button>
+        </div>
+      </div>
+
+      <!-- Controls Panel -->
+      <div class="ar-controls-panel">
+        <div class="ar-sliders-row">
+          <div class="ar-pill">
+            <span class="ar-slider-label">opacity</span>
+            <input type="range" class="ar-slider" id="opacity-slider" min="50" max="100" value="92" />
+          </div>
+          <div class="ar-pill">
+            <span class="ar-slider-label">length</span>
+            <input type="range" class="ar-slider" id="length-slider" min="60" max="200" value="100" />
+          </div>
+          <div class="ar-pill">
+            <span class="ar-slider-label">width</span>
+            <input type="range" class="ar-slider" id="width-slider" min="50" max="160" value="100" />
+          </div>
+        </div>
+        
+        <!-- Shape Selection pills -->
+        <div class="shape-pills-row">
+          <span class="ar-slider-label" style="margin-right: 4px;">Shape:</span>
+          <button class="shape-pill active" data-shape="oval" onclick="selectNailShape('oval')">Oval</button>
+          <button class="shape-pill" data-shape="square" onclick="selectNailShape('square')">Square</button>
+          <button class="shape-pill" data-shape="almond" onclick="selectNailShape('almond')">Almond</button>
+          <button class="shape-pill" data-shape="coffin" onclick="selectNailShape('coffin')">Coffin</button>
+          <button class="shape-pill" data-shape="stiletto" onclick="selectNailShape('stiletto')">Stiletto</button>
+        </div>
+
+        <!-- Quick finger selection pills -->
+        <div class="finger-pills-row">
+          <span class="ar-slider-label" style="margin-right: 4px;">Fingers:</span>
+          <button class="finger-pill active" data-finger="thumb" onclick="toggleFinger('thumb')">Thumb</button>
+          <button class="finger-pill active" data-finger="index" onclick="toggleFinger('index')">Index</button>
+          <button class="finger-pill active" data-finger="middle" onclick="toggleFinger('middle')">Middle</button>
+          <button class="finger-pill active" data-finger="ring" onclick="toggleFinger('ring')">Ring</button>
+          <button class="finger-pill active" data-finger="pinky" onclick="toggleFinger('pinky')">Pinky</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Bottom controls panel -->
+    <div id="tryon-bottom">
+      
+      <!-- Design carousel picker -->
+      <div class="carousel-section">
+        <div class="nail-carousel-container" id="nail-carousel">
+          <!-- Filled by JS -->
+        </div>
+      </div>
+
+      <!-- Shutter snapshot bar -->
+      <div class="shutter-row">
+        <button class="icon-btn" onclick="switchTab('design')" style="width: 48px; height: 48px; font-size: 18px;">🎨</button>
+        
+        <div class="shutter-btn-wrap" onclick="takeSnapshot()">
+          <div class="shutter-inner"></div>
+        </div>
+
+        <button class="icon-btn" onclick="toggleInfoToast()" style="width: 48px; height: 48px; font-size: 18px;">❓</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── 3. GALLERY / DESIGNS SCREEN ──────────────────── -->
+  <div id="screen-design" class="screen">
+    <div class="home-header">
+      <div>
+        <div class="home-title">Artisan Designs</div>
+        <div class="home-sub">Choose your custom look</div>
+      </div>
+      <div class="brand-logo" style="background: linear-gradient(135deg, #ab47bc, #8800ff)">🎨</div>
+    </div>
+
+    <div class="design-grid" id="design-catalogue-grid">
+      <!-- Filled programmatically by JS -->
+    </div>
+
+    <!-- Bottom Nav -->
+    <div class="bottom-nav">
+      <div class="bottom-nav-inner glass">
+        <button class="nav-tab" onclick="switchTab('home')">
+          <div class="nav-tab-icon">🌐</div>
+          <span>Explore</span>
+        </button>
+        <button class="nav-tab" onclick="switchTab('tryon')">
+          <div class="nav-tab-icon">💅</div>
+          <span>Try On</span>
+        </button>
+        <button class="nav-tab active" onclick="switchTab('design')">
+          <div class="nav-tab-icon">🎨</div>
+          <span>Designs</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── 4. SNAPSHOT PREVIEW SCREEN ───────────────────── -->
+  <div id="preview-overlay">
+    <div class="preview-header">
+      <button class="icon-btn" onclick="closePreviewOverlay()">←</button>
+      <div class="preview-title">Your Look ✦</div>
+      <div style="width: 44px;"></div>
+    </div>
+    
+    <div class="preview-frame">
+      <img id="preview-img" src="" alt="Captured Try-On View" />
+      <div class="preview-corner preview-corner-tl"></div>
+      <div class="preview-corner preview-corner-tr"></div>
+      <div class="preview-corner preview-corner-bl"></div>
+      <div class="preview-corner preview-corner-br"></div>
+    </div>
+
+    <!-- Mobile Long Press Hint -->
+    <div id="mobile-save-hint" style="text-align: center; font-size: 11px; color: var(--muted); margin: -4px 24px 10px; font-weight: 500;">
+      💡 Mobile user? Tap & hold the image above to save directly!
+    </div>
+
+    <div class="preview-actions">
+      <button class="preview-btn" onclick="closePreviewOverlay()">
+        <span class="preview-btn-icon">🔄</span>Retake
+      </button>
+      <button class="preview-btn primary" onclick="downloadSnapshot()">
+        <span class="preview-btn-icon">💾</span>Save Look
+      </button>
+      <button class="preview-btn" onclick="switchTab('design'); closePreviewOverlay();">
+        <span class="preview-btn-icon">🎨</span>Designs
+      </button>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════
+       CORE AR ENGINE & APPLICATION SCRIPTS
+  ═══════════════════════════════════════════════════ -->
+  <script>
+    // ── SECTION 1: ONE-EURO ADAPTIVE SMOOTHING FILTER ────────────────────────────
+    class OneEuroFilter1D {
+      constructor(minCutoff = 4.0, beta = 50.0, dCutoff = 1.0) {
+        this.minCutoff = minCutoff;
+        this.beta      = beta;
+        this.dCutoff   = dCutoff;
+        this._x        = null;
+        this._dx       = 0;
+        this._lastT    = null;
+      }
+
+      _alpha(cutoff, dt) {
+        const tau = 1.0 / (2 * Math.PI * cutoff);
+        return 1.0 / (1.0 + tau / dt);
+      }
+
+      filter(x, timestamp = performance.now()) {
+        if (this._x === null) {
+          this._x = x;
+          this._lastT = timestamp;
+          return x;
+        }
+        const dt = Math.max((timestamp - this._lastT) / 1000.0, 1e-5);
+        this._lastT = timestamp;
+
+        // Smooth derivative (velocity)
+        const dxRaw = (x - this._x) / dt;
+        const dAlpha = this._alpha(this.dCutoff, dt);
+        this._dx = dAlpha * dxRaw + (1.0 - dAlpha) * this._dx;
+
+        // Adapt cutoff based on speed
+        const cutoff = this.minCutoff + this.beta * Math.abs(this._dx);
+        const a = this._alpha(cutoff, dt);
+
+        this._x = a * x + (1.0 - a) * this._x;
+        return this._x;
+      }
+
+      reset() {
+        this._x = null;
+        this._dx = 0;
+        this._lastT = null;
+      }
+    }
+
+    class LandmarkSmoother {
+      constructor(numLandmarks = 21, minCutoff = 4.0, beta = 50.0) {
+        this._filters = Array.from({ length: numLandmarks }, () => ({
+          x: new OneEuroFilter1D(minCutoff, beta),
+          y: new OneEuroFilter1D(minCutoff, beta),
+          z: new OneEuroFilter1D(minCutoff, beta),
+        }));
+      }
+
+      smooth(landmarks, timestamp = performance.now()) {
+        return landmarks.map((lm, i) => ({
+          x: this._filters[i].x.filter(lm.x, timestamp),
+          y: this._filters[i].y.filter(lm.y, timestamp),
+          z: this._filters[i].z.filter(lm.z ?? 0, timestamp),
+          visibility: lm.visibility ?? 1,
+        }));
+      }
+
+      reset() {
+        this._filters.forEach(f => { f.x.reset(); f.y.reset(); f.z.reset(); });
+      }
+    }
+
+    // ── SECTION 2: NAIL GEOMETRY MODULE ──────────────────────────────────────────
+    const FINGER_CFG = {
+      thumb:  { pip: 2,  dip: 3,  tip: 4,  widthRatio: 0.95, extFwd: 0.08, extBack: -0.42 },
+      index:  { pip: 6,  dip: 7,  tip: 8,  widthRatio: 0.88, extFwd: 0.08, extBack: -0.42 },
+      middle: { pip: 10, dip: 11, tip: 12, widthRatio: 0.86, extFwd: 0.08, extBack: -0.42 },
+      ring:   { pip: 14, dip: 15, tip: 16, widthRatio: 0.83, extFwd: 0.08, extBack: -0.42 },
+      pinky:  { pip: 18, dip: 19, tip: 20, widthRatio: 0.80, extFwd: 0.08, extBack: -0.42 },
+    };
+
+    const FINGERS_LIST = ['thumb', 'index', 'middle', 'ring', 'pinky'];
+
+    const v2    = (x, y)    => ({ x, y });
+    const add   = (a, b)    => v2(a.x + b.x, a.y + b.y);
+    const sub   = (a, b)    => v2(a.x - b.x, a.y - b.y);
+    const scale = (v, s)    => v2(v.x * s, v.y * s);
+    const len   = (v)       => Math.sqrt(v.x * v.x + v.y * v.y);
+    const norm  = (v)       => { const l = len(v); return l > 1e-6 ? v2(v.x/l, v.y/l) : v2(0,1); };
+    const perp  = (v)       => v2(-v.y, v.x);
+    const lerp2 = (a, b, t) => v2(a.x*(1-t)+b.x*t, a.y*(1-t)+b.y*t);
+
+    const lmPx = (lm, W, H) => v2(lm.x * W, lm.y * H);
+
+    function computeNailQuad(landmarks, fingerName, W, H, lengthScale = 1.0, widthScale = 1.0) {
+      const cfg = FINGER_CFG[fingerName];
+      if (!cfg) return null;
+
+      const pip = lmPx(landmarks[cfg.pip], W, H);
+      const dip = lmPx(landmarks[cfg.dip], W, H);
+      const tip = lmPx(landmarks[cfg.tip], W, H);
+
+      // DIP → TIP axis
+      const axis = sub(tip, dip);
+      const axisLen = len(axis);
+      if (axisLen < 4) return null;
+
+      const axisN = norm(axis);
+      const perpN = perp(axisN);
+
+      // Snug proportions - substantially widened for realistic fit (from 0.17 to 0.32)
+      const halfW = axisLen * cfg.widthRatio * 0.32 * widthScale;
+
+      // Free edge tip center - elongated for elegance (from 0.08 to 0.15)
+      const topC = add(tip, scale(axisN, axisLen * 0.15 * lengthScale));
+      // Cuticle base center - extended back for full coverage (from -0.42 to -0.55)
+      const botC = add(tip, scale(axisN, -axisLen * 0.55 * lengthScale));
+
+      return [
+        add(topC, scale(perpN, -halfW)), // TL
+        add(topC, scale(perpN,  halfW)), // TR
+        add(botC, scale(perpN,  halfW)), // BR
+        add(botC, scale(perpN, -halfW)), // BL
+      ];
+    }
+
+    function buildNailClipPath(ctx, quad, shape = 'oval') {
+      const [tl, tr, br, bl] = quad;
+
+      const topMid   = lerp2(tl, tr, 0.5);
+      const botMid   = lerp2(bl, br, 0.5);
+      const leftMid  = lerp2(tl, bl, 0.5);
+      const rightMid = lerp2(tr, br, 0.5);
+
+      ctx.beginPath();
+
+      if (shape === 'square') {
+        const rCorner = (corner, mid, rf = 0.2) => lerp2(corner, mid, rf);
+        const blStart = rCorner(bl, leftMid, 0.2);
+        ctx.moveTo(blStart.x, blStart.y);
+        ctx.lineTo(rCorner(tl, leftMid, 0.05).x, rCorner(tl, leftMid, 0.05).y);
+        ctx.quadraticCurveTo(tl.x, tl.y, rCorner(tl, topMid, 0.05).x, rCorner(tl, topMid, 0.05).y);
+        ctx.lineTo(rCorner(tr, topMid, 0.05).x, rCorner(tr, topMid, 0.05).y);
+        ctx.quadraticCurveTo(tr.x, tr.y, rCorner(tr, rightMid, 0.05).x, rCorner(tr, rightMid, 0.05).y);
+        ctx.lineTo(rCorner(br, rightMid, 0.2).x, rCorner(br, rightMid, 0.2).y);
+        ctx.quadraticCurveTo(br.x, br.y, rCorner(br, botMid, 0.2).x, rCorner(br, botMid, 0.2).y);
+        ctx.quadraticCurveTo(botMid.x, botMid.y + 4, rCorner(bl, botMid, 0.2).x, rCorner(bl, botMid, 0.2).y);
+        ctx.quadraticCurveTo(bl.x, bl.y, blStart.x, blStart.y);
+
+      } else if (shape === 'almond') {
+        const rCorner = (corner, mid, rf = 0.4) => lerp2(corner, mid, rf);
+        const tlStart = lerp2(tl, topMid, 0.65);
+        ctx.moveTo(tlStart.x, tlStart.y);
+        const trStart = lerp2(tr, topMid, 0.65);
+        ctx.quadraticCurveTo(topMid.x, topMid.y - 4, trStart.x, trStart.y);
+        const brStart = rCorner(br, rightMid, 0.25);
+        ctx.lineTo(brStart.x, brStart.y);
+        ctx.quadraticCurveTo(br.x, br.y, rCorner(br, botMid, 0.25).x, rCorner(br, botMid, 0.25).y);
+        ctx.quadraticCurveTo(botMid.x, botMid.y + 4, rCorner(bl, botMid, 0.25).x, rCorner(bl, botMid, 0.25).y);
+        ctx.quadraticCurveTo(bl.x, bl.y, rCorner(bl, leftMid, 0.25).x, rCorner(bl, leftMid, 0.25).y);
+        ctx.lineTo(tlStart.x, tlStart.y);
+
+      } else if (shape === 'coffin') {
+        const rCorner = (corner, mid, rf = 0.3) => lerp2(corner, mid, rf);
+        const tlStart = lerp2(tl, topMid, 0.45);
+        ctx.moveTo(tlStart.x, tlStart.y);
+        const trStart = lerp2(tr, topMid, 0.45);
+        ctx.lineTo(trStart.x, trStart.y);
+        const brStart = rCorner(br, rightMid, 0.22);
+        ctx.lineTo(brStart.x, brStart.y);
+        ctx.quadraticCurveTo(br.x, br.y, rCorner(br, botMid, 0.22).x, rCorner(br, botMid, 0.22).y);
+        ctx.quadraticCurveTo(botMid.x, botMid.y + 4, rCorner(bl, botMid, 0.22).x, rCorner(bl, botMid, 0.22).y);
+        ctx.quadraticCurveTo(bl.x, bl.y, rCorner(bl, leftMid, 0.22).x, rCorner(bl, leftMid, 0.22).y);
+        ctx.lineTo(tlStart.x, tlStart.y);
+
+      } else if (shape === 'stiletto') {
+        const rCorner = (corner, mid, rf = 0.3) => lerp2(corner, mid, rf);
+        ctx.moveTo(topMid.x, topMid.y - 5);
+        const brStart = rCorner(br, rightMid, 0.25);
+        ctx.lineTo(brStart.x, brStart.y);
+        ctx.quadraticCurveTo(br.x, br.y, rCorner(br, botMid, 0.25).x, rCorner(br, botMid, 0.25).y);
+        ctx.quadraticCurveTo(botMid.x, botMid.y + 4, rCorner(bl, botMid, 0.25).x, rCorner(bl, botMid, 0.25).y);
+        ctx.quadraticCurveTo(bl.x, bl.y, rCorner(bl, leftMid, 0.25).x, rCorner(bl, leftMid, 0.25).y);
+        ctx.lineTo(topMid.x, topMid.y - 5);
+
+      } else {
+        // Oval (Default)
+        const rCorner = (corner, mid, rf = 0.4) => lerp2(corner, mid, rf);
+        const tlStart = rCorner(tl, topMid, 0.4);
+        ctx.moveTo(tlStart.x, tlStart.y);
+        const trStart = rCorner(tr, topMid, 0.4);
+        ctx.quadraticCurveTo(topMid.x, topMid.y - 2, trStart.x, trStart.y);
+        ctx.quadraticCurveTo(tr.x, tr.y, rCorner(tr, rightMid, 0.4).x, rCorner(tr, rightMid, 0.4).y);
+        ctx.lineTo(rCorner(br, rightMid, 0.4).x, rCorner(br, rightMid, 0.4).y);
+        ctx.quadraticCurveTo(br.x, br.y, rCorner(br, botMid, 0.4).x, rCorner(br, botMid, 0.4).y);
+        ctx.quadraticCurveTo(botMid.x, botMid.y + 4, rCorner(bl, botMid, 0.4).x, rCorner(bl, botMid, 0.4).y);
+        ctx.quadraticCurveTo(bl.x, bl.y, rCorner(bl, leftMid, 0.4).x, rCorner(bl, leftMid, 0.4).y);
+        ctx.lineTo(rCorner(tl, leftMid, 0.4).x, rCorner(tl, leftMid, 0.4).y);
+        ctx.quadraticCurveTo(tl.x, tl.y, tlStart.x, tlStart.y);
+      }
+
+      ctx.closePath();
+    }
+
+    // ── SECTION 3: PERSPECTIVE-CORRECT WARP & GLOSS RENDERER ─────────────────────
+    function computeAffine(s0, s1, s2, d0, d1, d2) {
+      const denom = (s1.x - s2.x) * (s0.y - s2.y) - (s0.x - s2.x) * (s1.y - s2.y);
+      if (Math.abs(denom) < 1e-8) return null;
+
+      const m00 = ((d1.x - d2.x) * (s0.y - s2.y) - (d0.x - d2.x) * (s1.y - s2.y)) / denom;
+      const m01 = ((d0.x - d2.x) * (s1.x - s2.x) - (d1.x - d2.x) * (s0.x - s2.x)) / denom;
+      const m02 = d0.x - m00 * s0.x - m01 * s0.y;
+
+      const m10 = ((d1.y - d2.y) * (s0.y - s2.y) - (d0.y - d2.y) * (s1.y - s2.y)) / denom;
+      const m11 = ((d0.y - d2.y) * (s1.x - s2.x) - (d1.y - d2.y) * (s0.x - s2.x)) / denom;
+      const m12 = d0.y - m10 * s0.x - m11 * s0.y;
+
+      return [m00, m10, m01, m11, m02, m12];
+    }
+
+    function drawWarpedTriangle(ctx, image, srcW, srcH, s0, s1, s2, d0, d1, d2) {
+      const affine = computeAffine(s0, s1, s2, d0, d1, d2);
+      if (!affine) return;
+
+      // Centroid of the destination triangle
+      const cx = (d0.x + d1.x + d2.x) / 3;
+      const cy = (d0.y + d1.y + d2.y) / 3;
+
+      // Expand vertices slightly outwards from centroid to eliminate diagonal rasterization seam
+      const expandVertex = (p) => {
+        const dx = p.x - cx;
+        const dy = p.y - cy;
+        const dLen = Math.hypot(dx, dy);
+        if (dLen < 1e-4) return p;
+        return {
+          x: p.x + (dx / dLen) * 0.85,
+          y: p.y + (dy / dLen) * 0.85
+        };
+      };
+
+      const ed0 = expandVertex(d0);
+      const ed1 = expandVertex(d1);
+      const ed2 = expandVertex(d2);
+
+      ctx.save();
+      ctx.beginPath();
+      ctx.moveTo(ed0.x, ed0.y);
+      ctx.lineTo(ed1.x, ed1.y);
+      ctx.lineTo(ed2.x, ed2.y);
+      ctx.closePath();
+      ctx.clip();
+
+      ctx.transform(...affine);
+      ctx.drawImage(image, 0, 0, srcW, srcH);
+      ctx.restore();
+    }
+
+    function renderNailOnQuad(ctx, image, quad, opacity = 0.92, shape = 'oval') {
+      if (!image || !quad) return;
+
+      const W = image.width;
+      const H = image.height;
+      const [TL, TR, BR, BL] = quad;
+
+      const sTL = { x: 0, y: 0 };
+      const sTR = { x: W, y: 0 };
+      const sBR = { x: W, y: H };
+      const sBL = { x: 0, y: H };
+
+      ctx.save();
+      ctx.globalAlpha = opacity;
+
+      // Clip to realistic nail shape silhouette
+      buildNailClipPath(ctx, quad, shape);
+      ctx.clip();
+
+      // Warp texture onto quad via 2-triangle affine warping
+      drawWarpedTriangle(ctx, image, W, H, sTL, sTR, sBL, TL, TR, BL);
+      drawWarpedTriangle(ctx, image, W, H, sTR, sBR, sBL, TR, BR, BL);
+
+      ctx.restore();
+
+      // Overlay specular gloss
+      drawGlossHighlight(ctx, quad, opacity, shape);
+    }
+
+    function drawGlossHighlight(ctx, quad, baseOpacity, shape) {
+      const [TL, TR, BR, BL] = quad;
+      const topMid = { x: (TL.x + TR.x) / 2, y: (TL.y + TR.y) / 2 };
+      const botMid = { x: (BL.x + BR.x) / 2, y: (BL.y + BR.y) / 2 };
+
+      const glossEnd = {
+        x: topMid.x + (botMid.x - topMid.x) * 0.32,
+        y: topMid.y + (botMid.y - topMid.y) * 0.32,
+      };
+
+      ctx.save();
+      buildNailClipPath(ctx, quad, shape);
+      ctx.clip();
+
+      ctx.globalCompositeOperation = 'screen';
+
+      const glossGrad = ctx.createLinearGradient(topMid.x, topMid.y, glossEnd.x, glossEnd.y);
+      const gi = baseOpacity * 0.58;
+      glossGrad.addColorStop(0.00, `rgba(255, 255, 255, ${gi.toFixed(2)})`);
+      glossGrad.addColorStop(0.40, `rgba(255, 255, 255, ${(gi * 0.22).toFixed(2)})`);
+      glossGrad.addColorStop(1.00, 'rgba(255, 255, 255, 0)');
+
+      const minX = Math.min(TL.x, TR.x, BR.x, BL.x);
+      const maxX = Math.max(TL.x, TR.x, BR.x, BL.x);
+      const minY = Math.min(TL.y, TR.y, BR.y, BL.y);
+      const maxY = Math.max(TL.y, TR.y, BR.y, BL.y);
+
+      ctx.fillStyle = glossGrad;
+      ctx.fillRect(minX - 2, minY - 2, (maxX - minX) + 4, (maxY - minY) + 4);
+
+      // Radial spotlight reflection
+      const hlX = TL.x + (TR.x - TL.x) * 0.66;
+      const hlY = topMid.y + (botMid.y - topMid.y) * 0.08;
+      const nailW = Math.hypot(TR.x - TL.x, TR.y - TL.y);
+      const hlR = Math.max(3, nailW * 0.15);
+
+      const specGrad = ctx.createRadialGradient(hlX, hlY, 0, hlX, hlY, hlR * 2.5);
+      const si = baseOpacity * 0.45;
+      specGrad.addColorStop(0.0, `rgba(255, 255, 255, ${si.toFixed(2)})`);
+      specGrad.addColorStop(0.5, `rgba(255, 255, 255, ${(si * 0.16).toFixed(2)})`);
+      specGrad.addColorStop(1.0, 'rgba(255, 255, 255, 0)');
+      
+      ctx.fillStyle = specGrad;
+      ctx.beginPath();
+      ctx.arc(hlX, hlY, hlR * 2.5, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.restore();
+    }
+
+    // ── SECTION 4: 18 PROGRAMMATIC HIGH-FIDELITY NAIL DESIGNS ─────────────────────
+    const NW = 300;
+    const NH = 400;
+
+    function mkNailCanvas() {
+      const c = document.createElement('canvas');
+      c.width = NW; c.height = NH;
+      return c;
+    }
+
+    function drawBaseNailPath(ctx) {
+      const cx = NW / 2, rx = NW * 0.45, ry = NH * 0.48;
+      ctx.beginPath();
+      ctx.moveTo(cx, NH * 0.01);
+      ctx.bezierCurveTo(cx + rx * 0.94, NH * 0.01, cx + rx, NH * 0.28, cx + rx, NH * 0.55);
+      ctx.bezierCurveTo(cx + rx, NH * 0.88, cx + rx * 0.58, NH * 0.99, cx, NH * 0.99);
+      ctx.bezierCurveTo(cx - rx * 0.58, NH * 0.99, cx - rx, NH * 0.88, cx - rx, NH * 0.55);
+      ctx.bezierCurveTo(cx - rx, NH * 0.28, cx - rx * 0.94, NH * 0.01, cx, NH * 0.01);
+      ctx.closePath();
+    }
+
+    function createLinGrad(ctx, x0, y0, x1, y1, stops) {
+      const g = ctx.createLinearGradient(x0, y0, x1, y1);
+      stops.forEach(([pos, col]) => g.addColorStop(pos, col));
+      return g;
+    }
+
+    // Glitter scatter
+    function addGlitterSpecks(ctx, color, count = 200, maxR = 2.0) {
+      ctx.save();
+      for (let i = 0; i < count; i++) {
+        const x = Math.random() * NW;
+        const y = Math.random() * NH;
+        const r = Math.random() * maxR + 0.3;
+        ctx.globalAlpha = 0.35 + Math.random() * 0.65;
+        ctx.fillStyle = color;
+        ctx.beginPath();
+        ctx.arc(x, y, r, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.restore();
+    }
+
+    function addMarbleLines(ctx, color, count = 6) {
+      ctx.save();
+      ctx.strokeStyle = color;
+      ctx.lineWidth = 0.8;
+      for (let i = 0; i < count; i++) {
+        ctx.globalAlpha = 0.22 + Math.random() * 0.35;
+        ctx.beginPath();
+        let x = Math.random() * NW;
+        let y = 0;
+        ctx.moveTo(x, y);
+        while (y < NH) {
+          const cpX = x + (Math.random() - 0.5) * NW * 0.5;
+          const cpY = y + NH * 0.12;
+          x += (Math.random() - 0.5) * NW * 0.3;
+          y = cpY + NH * 0.08;
+          ctx.quadraticCurveTo(cpX, cpY, x, y);
+        }
+        ctx.stroke();
+      }
+      ctx.restore();
+    }
+
+    // Design Creators
+    const DESIGN_GENERATORS = {
+      french: () => {
+        const c = mkNailCanvas(); const ctx = c.getContext('2d');
+        drawBaseNailPath(ctx); ctx.clip();
+        ctx.fillStyle = createLinGrad(ctx, 0,0, 0,NH, [[0,'#fceada'],[0.5,'#f0cebd'],[1,'#dcb59c']]);
+        ctx.fillRect(0,0, NW, NH);
+        const ty = NH * 0.28;
+        ctx.beginPath();
+        ctx.moveTo(0, ty + NH*0.02);
+        ctx.quadraticCurveTo(NW/2, ty - NH*0.038, NW, ty + NH*0.02);
+        ctx.lineTo(NW, 0); ctx.lineTo(0,0); ctx.closePath();
+        ctx.fillStyle = '#fffefa'; ctx.fill();
+        return c;
+      },
+      hotpink: () => {
+        const c = mkNailCanvas(); const ctx = c.getContext('2d');
+        drawBaseNailPath(ctx); ctx.clip();
+        ctx.fillStyle = createLinGrad(ctx, 0,0, NW*.4,NH, [[0,'#FF2D78'],[0.5,'#E91E63'],[1,'#B2185B']]);
+        ctx.fillRect(0,0, NW, NH);
+        return c;
+      },
+      glazeddonut: () => {
+        const c = mkNailCanvas(); const ctx = c.getContext('2d');
+        drawBaseNailPath(ctx); ctx.clip();
+        ctx.fillStyle = 'rgba(253, 245, 242, 0.82)';
+        ctx.fillRect(0,0, NW, NH);
+        ctx.globalCompositeOperation = 'screen';
+        ctx.fillStyle = createLinGrad(ctx, 0, 0, NW, NH, [
+          [0,'rgba(255, 230, 240, 0.45)'],
+          [0.5,'rgba(230, 245, 255, 0.20)'],
+          [1,'rgba(255, 255, 255, 0.48)']
+        ]);
+        ctx.fillRect(0,0, NW, NH);
+        return c;
+      },
+      chrome: () => {
+        const c = mkNailCanvas(); const ctx = c.getContext('2d');
+        drawBaseNailPath(ctx); ctx.clip();
+        ctx.fillStyle = createLinGrad(ctx, 0,0, NW,NH, [
+          [0,'#FDFDFD'],[0.15,'#CDCDCD'],[0.32,'#9A9A9A'],
+          [0.52,'#EAEAEA'],[0.72,'#AEAEAE'],[0.86,'#D2D2D2'],[1,'#666666']
+        ]);
+        ctx.fillRect(0,0, NW, NH);
+        ctx.globalCompositeOperation = 'screen';
+        ctx.fillStyle = createLinGrad(ctx, NW*0.2, 0, NW*0.8, NH, [[0,'rgba(255,255,255,0)'],[0.5,'rgba(255,255,255,0.5)'],[1,'rgba(255,255,255,0)']]);
+        ctx.fillRect(0,0, NW, NH);
+        return c;
+      },
+      emerald: () => {
+        const c = mkNailCanvas(); const ctx = c.getContext('2d');
+        drawBaseNailPath(ctx); ctx.clip();
+        ctx.fillStyle = createLinGrad(ctx, 0,0, NW, NH, [[0,'#00332c'],[0.6,'#004D40'],[1,'#001a15']]);
+        ctx.fillRect(0,0, NW, NH);
+        ctx.globalCompositeOperation = 'screen';
+        ctx.fillStyle = createLinGrad(ctx, 0, NH, NW, 0, [
+          [0,'rgba(0, 200, 150, 0)'],
+          [0.5,'rgba(128, 255, 210, 0.58)'],
+          [1,'rgba(0, 200, 150, 0)']
+        ]);
+        ctx.fillRect(0,0, NW, NH);
+        return c;
+      },
+      black: () => {
+        const c = mkNailCanvas(); const ctx = c.getContext('2d');
+        drawBaseNailPath(ctx); ctx.clip();
+        ctx.fillStyle = createLinGrad(ctx, 0,0, NW*0.3,NH, [[0,'#222'],[0.5,'#111'],[1,'#040404']]);
+        ctx.fillRect(0,0, NW, NH);
+        addGlitterSpecks(ctx, 'rgba(255,255,255,0.45)', 50, 1.2);
+        return c;
+      },
+      roseombre: () => {
+        const c = mkNailCanvas(); const ctx = c.getContext('2d');
+        drawBaseNailPath(ctx); ctx.clip();
+        ctx.fillStyle = createLinGrad(ctx, 0,0, 0,NH, [[0,'#FF2D78'],[0.35,'#FF6EB4'],[0.65,'#FFB3D1'],[1,'#fce9dc']]);
+        ctx.fillRect(0,0, NW, NH);
+        return c;
+      },
+      marble: () => {
+        const c = mkNailCanvas(); const ctx = c.getContext('2d');
+        drawBaseNailPath(ctx); ctx.clip();
+        ctx.fillStyle = createLinGrad(ctx, 0,0, NW*0.2, NH, [[0,'#F8F8F8'],[0.5,'#EFEFEF'],[1,'#E5E5E2']]);
+        ctx.fillRect(0,0, NW, NH);
+        addMarbleLines(ctx, '#8E8E8E', 6);
+        addMarbleLines(ctx, '#C5A344', 3);
+        return c;
+      },
+      holo: () => {
+        const c = mkNailCanvas(); const ctx = c.getContext('2d');
+        drawBaseNailPath(ctx); ctx.clip();
+        ctx.fillStyle = createLinGrad(ctx, 0,0, NW,NH, [
+          [0,'#FF007F'],[0.16,'#FF5500'],[0.33,'#FFD700'],
+          [0.50,'#00DF55'],[0.66,'#007FFF'],[0.83,'#7F00FF'],[1,'#FF007F']
+        ]);
+        ctx.fillRect(0,0, NW, NH);
+        ctx.globalCompositeOperation = 'screen';
+        ctx.fillStyle = createLinGrad(ctx, NW,0, 0,NH, [[0,'rgba(255,255,255,0.3)'],[0.5,'rgba(255,255,255,0.02)'],[1,'rgba(255,255,255,0.2)']]);
+        ctx.fillRect(0,0, NW, NH);
+        return c;
+      },
+      lavender: () => {
+        const c = mkNailCanvas(); const ctx = c.getContext('2d');
+        drawBaseNailPath(ctx); ctx.clip();
+        ctx.fillStyle = createLinGrad(ctx, 0,0, NW*0.2,NH, [[0,'#CD90D5'],[0.5,'#A942B9'],[1,'#791A9F']]);
+        ctx.fillRect(0,0, NW, NH);
+        addGlitterSpecks(ctx, 'rgba(255,255,255,0.65)', 120, 1.4);
+        return c;
+      },
+      goldglitter: () => {
+        const c = mkNailCanvas(); const ctx = c.getContext('2d');
+        drawBaseNailPath(ctx); ctx.clip();
+        ctx.fillStyle = createLinGrad(ctx, 0,0, NW*0.3,NH, [[0,'#C5A344'],[0.4,'#B5800B'],[0.7,'#D5A020'],[1,'#856010']]);
+        ctx.fillRect(0,0, NW, NH);
+        addGlitterSpecks(ctx, '#FFE675', 300, 2.6);
+        addGlitterSpecks(ctx, '#FFFFFF', 90, 1.3);
+        return c;
+      },
+      rubyglitter: () => {
+        const c = mkNailCanvas(); const ctx = c.getContext('2d');
+        drawBaseNailPath(ctx); ctx.clip();
+        ctx.fillStyle = createLinGrad(ctx, 0,0, 0,NH, [[0,'#900C3F'],[0.6,'#581845'],[1,'#2c001e']]);
+        ctx.fillRect(0,0, NW, NH);
+        addGlitterSpecks(ctx, '#FF5733', 200, 2.2);
+        addGlitterSpecks(ctx, '#C70039', 150, 1.6);
+        return c;
+      },
+      sage: () => {
+        const c = mkNailCanvas(); const ctx = c.getContext('2d');
+        drawBaseNailPath(ctx); ctx.clip();
+        ctx.fillStyle = createLinGrad(ctx, 0,0, NW*0.2,NH, [[0,'#B4DDD8'],[0.5,'#9AC2BD'],[1,'#7CAAA3']]);
+        ctx.fillRect(0,0, NW, NH);
+        return c;
+      },
+      coral: () => {
+        const c = mkNailCanvas(); const ctx = c.getContext('2d');
+        drawBaseNailPath(ctx); ctx.clip();
+        ctx.fillStyle = createLinGrad(ctx, 0,0, NW*0.2,NH, [[0,'#FF8962'],[0.4,'#FF6A32'],[0.7,'#E64515'],[1,'#BE320A']]);
+        ctx.fillRect(0,0, NW, NH);
+        ctx.globalCompositeOperation = 'screen';
+        ctx.fillStyle = createLinGrad(ctx, 0,0, NW,0, [[0,'rgba(255,255,255,0.06)'],[0.5,'rgba(255,255,255,0.2)'],[1,'rgba(255,255,255,0.06)']]);
+        ctx.fillRect(0,0, NW, NH);
+        return c;
+      },
+      milky: () => {
+        const c = mkNailCanvas(); const ctx = c.getContext('2d');
+        drawBaseNailPath(ctx); ctx.clip();
+        ctx.fillStyle = 'rgba(245, 245, 248, 0.85)';
+        ctx.fillRect(0,0, NW, NH);
+        ctx.globalCompositeOperation = 'screen';
+        ctx.fillStyle = createLinGrad(ctx, 0, 0, NW, NH, [
+          [0,'rgba(255, 255, 255, 0.25)'],
+          [1,'rgba(255, 255, 255, 0)']
+        ]);
+        ctx.fillRect(0,0, NW, NH);
+        return c;
+      },
+      glitch: () => {
+        const c = mkNailCanvas(); const ctx = c.getContext('2d');
+        drawBaseNailPath(ctx); ctx.clip();
+        ctx.fillStyle = '#06060c';
+        ctx.fillRect(0,0, NW, NH);
+        ctx.strokeStyle = '#00FF66';
+        ctx.lineWidth = 3;
+        ctx.beginPath(); ctx.moveTo(0, NH*0.35); ctx.lineTo(NW, NH*0.35); ctx.stroke();
+        ctx.strokeStyle = '#BD00FF';
+        ctx.lineWidth = 4;
+        ctx.beginPath(); ctx.moveTo(0, NH*0.6); ctx.lineTo(NW, NH*0.6); ctx.stroke();
+        ctx.strokeStyle = '#00F0FF';
+        ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.moveTo(0, NH*0.75); ctx.lineTo(NW, NH*0.75); ctx.stroke();
+        return c;
+      },
+      nudestripe: () => {
+        const c = mkNailCanvas(); const ctx = c.getContext('2d');
+        drawBaseNailPath(ctx); ctx.clip();
+        ctx.fillStyle = createLinGrad(ctx, 0,0, 0,NH, [[0,'#F4CEB2'],[0.5,'#E5B7A6'],[1,'#D09B8B']]);
+        ctx.fillRect(0,0, NW, NH);
+        ctx.strokeStyle = 'rgba(195,163,68,0.8)';
+        ctx.lineWidth = 2.5;
+        ctx.beginPath();
+        ctx.moveTo(NW*0.5, NH*0.1);
+        ctx.lineTo(NW*0.5, NH*0.9);
+        ctx.stroke();
+        return c;
+      }
+    };
+
+    const NAIL_CATALOGUE = [
+      { id: 'french',      name: 'French Classic', tag: 'Timeless luxury', accent: '#dcb59c' },
+      { id: 'hotpink',     name: 'Hot Pink Gel',   tag: 'Neon Trending',   accent: '#FF2D78' },
+      { id: 'glazeddonut', name: 'Hailey Glazed',  tag: 'Pearlescent Viral',accent: '#fdf5f2' },
+      { id: 'chrome',      name: 'Chrome Silver',  tag: 'Metallic Future', accent: '#CDCDCD' },
+      { id: 'emerald',     name: 'Emerald Velvet', tag: 'Luxury Cat-Eye',  accent: '#004D40' },
+      { id: 'black',       name: 'Midnight Black', tag: 'Bold Matte',      accent: '#222222' },
+      { id: 'roseombre',   name: 'Rose Ombre',     tag: 'Soft Romantic',   accent: '#FF6EB4' },
+      { id: 'marble',      name: 'White Marble',   tag: 'Gold Vein Luxe',  accent: '#EFEFEF' },
+      { id: 'holo',        name: 'Holographic',    tag: 'Iridescent Glow', accent: '#7F00FF' },
+      { id: 'lavender',    name: 'Lavender Dust',  tag: 'Ethereal Purple', accent: '#A942B9' },
+      { id: 'goldglitter', name: 'Gold Glitter',   tag: 'Glamour Sparkle', accent: '#D5A020' },
+      { id: 'rubyglitter', name: 'Ruby Glitter',   tag: 'Luxury Red Jewel',accent: '#C70039' },
+      { id: 'sage',        name: 'Sage Mist',      tag: 'Pastel Chic',     accent: '#9AC2BD' },
+      { id: 'coral',       name: 'Coral Reef',     tag: 'Vibrant Shell',   accent: '#FF6A32' },
+      { id: 'milky',       name: 'Milky White',    tag: 'Chic Translucent',accent: '#F5F5F7' },
+      { id: 'glitch',      name: 'Cyber Glitch',   tag: 'Neon Sci-Fi Bold',accent: '#BD00FF' },
+      { id: 'nudestripe',  name: 'Nude Minimal',   tag: 'Graceful Stripe', accent: '#E5B7A6' }
+    ];
+
+    let generatedDesigns = {};
+
+    function initAllProgrammaticDesigns() {
+      NAIL_CATALOGUE.forEach(d => {
+        generatedDesigns[d.id] = {
+          ...d,
+          canvas: DESIGN_GENERATORS[d.id]()
+        };
+      });
+    }
+
+    // ── SECTION 5: APP SYSTEM STATE & EVENT BINDINGS ─────────────────────────────
+    let activeTab = 'home';
+    let activeFingers = new Set(['thumb', 'index', 'middle', 'ring', 'pinky']);
+    let currentOpacity = 0.92;
+    let nailLengthScale = 1.0;
+    let nailWidthScale = 1.0;
+    let selectedNailShape = 'oval';
+    let selectedDesignId = 'french';
+    
+    let arMode = 'camera';
+    let uploadedImage = null;
+    let uploadPendingDetection = false;
+    
+    let localStream = null;
+    let handsEstimator = null;
+    let cameraController = null;
+    let activeFilters = [];
+
+    let currentFacingMode = 'user';
+    let mediaPipeReady = false;
+    let frameRequestId = null;
+
+    let detectedLandmarks = [];
+
+    // Init App
+    window.addEventListener('DOMContentLoaded', () => {
+      initAllProgrammaticDesigns();
+      buildCarouselUI();
+      buildCatalogueGridUI();
+      
+      // Sliders listeners
+      document.getElementById('opacity-slider').addEventListener('input', (e) => {
+        currentOpacity = Number(e.target.value) / 100.0;
+      });
+      document.getElementById('length-slider').addEventListener('input', (e) => {
+        nailLengthScale = Number(e.target.value) / 100.0;
+      });
+      document.getElementById('width-slider').addEventListener('input', (e) => {
+        nailWidthScale = Number(e.target.value) / 100.0;
+      });
+
+      switchTab('home');
+    });
+
+    // Screen tab controller
+    function switchTab(tabId) {
+      activeTab = tabId;
+      document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+      document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+
+      if (tabId === 'home') {
+        document.getElementById('screen-home').classList.add('active');
+        document.querySelectorAll('.nav-tab:nth-child(1)').forEach(t => t.classList.add('active'));
+        stopCameraPipeline();
+      } else if (tabId === 'tryon') {
+        document.getElementById('screen-tryon').classList.add('active');
+        document.querySelectorAll('.nav-tab:nth-child(2)').forEach(t => t.classList.add('active'));
+        
+        if (arMode === 'camera') {
+          if (!localStream) {
+            startCameraPipeline();
+          }
+        } else if (arMode === 'upload') {
+          // Photo mode - restart render loop if it was stopped
+          if (!frameRequestId) {
+            frameRequestId = requestAnimationFrame(canvasRenderLoop);
+          }
+          document.getElementById('pipeline-status').textContent = 'Photo Mode 📸';
+        }
+      } else if (tabId === 'design') {
+        document.getElementById('screen-design').classList.add('active');
+        document.querySelectorAll('.nav-tab:nth-child(3)').forEach(t => t.classList.add('active'));
+        stopCameraPipeline();
+      }
+    }
+
+    function goTryonWithDesign(designId) {
+      selectedDesignId = designId;
+      updateCarouselSelection();
+      switchTab('tryon');
+      showToast(`💅 Style: ${generatedDesigns[designId].name}`);
+    }
+
+    function selectNailShape(shape) {
+      selectedNailShape = shape;
+      document.querySelectorAll('.shape-pill').forEach(btn => {
+        btn.classList.toggle('active', btn.getAttribute('data-shape') === shape);
+      });
+      showToast(`💅 Shape set to: ${shape}`);
+    }
+
+    // Render design carousel
+    function buildCarouselUI() {
+      const carousel = document.getElementById('nail-carousel');
+      carousel.innerHTML = '';
+      
+      NAIL_CATALOGUE.forEach(d => {
+        const item = document.createElement('div');
+        item.className = 'carousel-item';
+        if (d.id === selectedDesignId) item.className += ' selected';
+        item.setAttribute('data-id', d.id);
+        item.onclick = () => selectDesignInCarousel(d.id);
+
+        const thumbBox = document.createElement('div');
+        thumbBox.className = 'carousel-thumb-box';
+        
+        const img = document.createElement('img');
+        img.src = generatedDesigns[d.id].canvas.toDataURL();
+        thumbBox.appendChild(img);
+
+        const badge = document.createElement('div');
+        badge.className = 'carousel-check';
+        badge.style.background = d.accent;
+        badge.style.display = (d.id === selectedDesignId) ? 'flex' : 'none';
+        badge.textContent = '✓';
+        thumbBox.appendChild(badge);
+
+        const label = document.createElement('span');
+        label.className = 'carousel-label';
+        label.textContent = d.name;
+
+        item.appendChild(thumbBox);
+        item.appendChild(label);
+        carousel.appendChild(item);
+      });
+    }
+
+    function selectDesignInCarousel(designId) {
+      selectedDesignId = designId;
+      updateCarouselSelection();
+      showToast(`✨ Selected: ${generatedDesigns[designId].name}`);
+    }
+
+    function updateCarouselSelection() {
+      document.querySelectorAll('.carousel-item').forEach(item => {
+        const id = item.getAttribute('data-id');
+        const isSel = (id === selectedDesignId);
+        item.classList.toggle('selected', isSel);
+        
+        const badge = item.querySelector('.carousel-check');
+        if (badge) badge.style.display = isSel ? 'flex' : 'none';
+      });
+    }
+
+    // Render designs screen
+    function buildCatalogueGridUI() {
+      const grid = document.getElementById('design-catalogue-grid');
+      grid.innerHTML = '';
+      
+      NAIL_CATALOGUE.forEach(d => {
+        const card = document.createElement('div');
+        card.className = 'design-card';
+        card.onclick = () => goTryonWithDesign(d.id);
+
+        const frame = document.createElement('div');
+        frame.className = 'design-img-frame';
+        
+        const designCanvas = generatedDesigns[d.id].canvas;
+        const previewCanvas = document.createElement('canvas');
+        previewCanvas.width = 60;
+        previewCanvas.height = 90;
+        const pCtx = previewCanvas.getContext('2d');
+        pCtx.drawImage(designCanvas, 0,0, NW,NH, 0,0, 60,90);
+        
+        frame.appendChild(previewCanvas);
+
+        const info = document.createElement('div');
+        info.className = 'design-info';
+        
+        const name = document.createElement('div');
+        name.className = 'design-name';
+        name.textContent = d.name;
+
+        const tag = document.createElement('div');
+        tag.className = 'design-tag';
+        tag.textContent = d.tag;
+
+        info.appendChild(name);
+        info.appendChild(tag);
+        
+        card.appendChild(frame);
+        card.appendChild(info);
+        grid.appendChild(card);
+      });
+    }
+
+    // Toggle selected fingers
+    function toggleFinger(fingerName) {
+      const btn = document.querySelector(`.finger-pill[data-finger="${fingerName}"]`);
+      if (activeFingers.has(fingerName)) {
+        if (activeFingers.size > 1) {
+          activeFingers.delete(fingerName);
+          btn.classList.remove('active');
+        } else {
+          showToast('⚠️ Keep at least one finger active!');
+        }
+      } else {
+        activeFingers.add(fingerName);
+        btn.classList.add('active');
+      }
+    }
+
+    // Toast
+    let toastTimeout = null;
+    function showToast(msg) {
+      clearTimeout(toastTimeout);
+      const toast = document.getElementById('toast');
+      toast.textContent = msg;
+      toast.style.display = 'block';
+      toastTimeout = setTimeout(() => {
+        toast.style.display = 'none';
+      }, 2500);
+    }
+
+    function toggleInfoToast() {
+      showToast('💡 Adjust sliders for length and width. Select shapes above carousel.');
+    }
+
+    // ── SECTION 6: CAMERA PIPELINE & MEDIAPIPE FRAME LOOP ────────────────────────
+    async function initMediaPipeEngine() {
+      const statusEl = document.getElementById('pipeline-status');
+      if (handsEstimator) return;
+      
+      try {
+        handsEstimator = new Hands({
+          locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
+        });
+
+        handsEstimator.setOptions({
+          maxNumHands: 2,
+          modelComplexity: 1,
+          minDetectionConfidence: 0.60,
+          minTrackingConfidence: 0.60
+        });
+
+        handsEstimator.onResults(onHandResults);
+        mediaPipeReady = true;
+      } catch (err) {
+        console.error('MediaPipe Hands setup error:', err);
+        statusEl.textContent = 'AI Engine Load Failed';
+        showToast('❌ MediaPipe Engine failed to load.');
+      }
+    }
+
+    async function startCameraPipeline() {
+      arMode = 'camera';
+      uploadedImage = null;
+      document.getElementById('flip-btn-ar').style.display = 'flex';
+      document.getElementById('cam-mode-btn').style.display = 'none';
+      
+      const video = document.getElementById('camera-video');
+      const statusEl = document.getElementById('pipeline-status');
+
+      statusEl.textContent = 'Initializing Camera...';
+
+      try {
+        if (localStream) {
+          localStream.getTracks().forEach(t => t.stop());
+        }
+
+        const constraints = {
+          video: {
+            facingMode: currentFacingMode,
+            width: { ideal: 1280 },
+            height: { ideal: 720 },
+            frameRate: { ideal: 30, max: 60 }
+          },
+          audio: false
+        };
+
+        localStream = await navigator.mediaDevices.getUserMedia(constraints);
+        video.srcObject = localStream;
+        await video.play();
+
+        document.getElementById('perm-overlay').classList.add('hidden');
+        statusEl.textContent = 'Loading AI Tracking Model...';
+      } catch (err) {
+        console.error('Camera startup error:', err);
+        statusEl.textContent = 'Camera Access Denied';
+        document.getElementById('perm-overlay').classList.remove('hidden');
+        return;
+      }
+
+      await initMediaPipeEngine();
+
+      statusEl.textContent = 'AR Engine Active ✨';
+      showToast('✨ Live AR active! Present your hand.');
+
+      if (cameraController) {
+        cameraController.stop();
+      }
+
+      cameraController = new Camera(video, {
+        onFrame: async () => {
+          if (mediaPipeReady && activeTab === 'tryon' && arMode === 'camera') {
+            try {
+              await handsEstimator.send({ image: video });
+            } catch (e) {}
+          }
+        },
+        width: 1280,
+        height: 720
+      });
+
+      cameraController.start();
+
+      if (frameRequestId) cancelAnimationFrame(frameRequestId);
+      frameRequestId = requestAnimationFrame(canvasRenderLoop);
+    }
+
+    function stopCameraPipeline() {
+      if (frameRequestId) {
+        cancelAnimationFrame(frameRequestId);
+        frameRequestId = null;
+      }
+      if (cameraController) {
+        cameraController.stop();
+        cameraController = null;
+      }
+      if (localStream) {
+        localStream.getTracks().forEach(t => t.stop());
+        localStream = null;
+      }
+      detectedLandmarks = [];
+      activeFilters = [];
+      document.getElementById('pipeline-status').textContent = 'AR Standby';
+    }
+
+    async function flipCamera() {
+      currentFacingMode = (currentFacingMode === 'user') ? 'environment' : 'user';
+      activeFilters = [];
+      showToast(currentFacingMode === 'user' ? '🤳 Front camera mode' : '📷 Rear camera mode');
+      if (localStream) {
+        await startCameraPipeline();
+      }
+    }
+
+    // Static hand photo upload handler
+    function triggerImageUpload() {
+      document.getElementById('hand-upload-input').click();
+    }
+
+    function detectDesignBoundingBox(img) {
+      const tempCanvas = document.createElement('canvas');
+      const w = img.naturalWidth || img.width;
+      const h = img.naturalHeight || img.height;
+      tempCanvas.width = w;
+      tempCanvas.height = h;
+      const tempCtx = tempCanvas.getContext('2d');
+      tempCtx.drawImage(img, 0, 0);
+      
+      try {
+        const imgData = tempCtx.getImageData(0, 0, w, h);
+        const data = imgData.data;
+        
+        let minX = w, maxX = 0, minY = h, maxY = 0;
+        let hasContent = false;
+        
+        // Scan pixels to find content boundaries (ignoring transparent and pure white borders)
+        const threshold = 242; // White threshold
+        for (let y = 0; y < h; y++) {
+          for (let x = 0; x < w; x++) {
+            const idx = (y * w + x) * 4;
+            const r = data[idx];
+            const g = data[idx+1];
+            const b = data[idx+2];
+            const a = data[idx+3];
+            
+            const isTransparent = a < 20;
+            const isWhite = r > threshold && g > threshold && b > threshold;
+            
+            if (!isTransparent && !isWhite) {
+              hasContent = true;
+              if (x < minX) minX = x;
+              if (x > maxX) maxX = x;
+              if (y < minY) minY = y;
+              if (y > maxY) maxY = y;
+            }
+          }
+        }
+        
+        if (hasContent) {
+          // Add a small safety padding to prevent hard edge cropping
+          const padX = Math.max(1, Math.round(w * 0.015));
+          const padY = Math.max(1, Math.round(h * 0.015));
+          return {
+            x: Math.max(0, minX - padX),
+            y: Math.max(0, minY - padY),
+            w: Math.min(w - minX, (maxX - minX) + 2 * padX),
+            h: Math.min(h - minY, (maxY - minY) + 2 * padY)
+          };
+        }
+      } catch (err) {
+        console.error('Failed to detect content bounds:', err);
+      }
+      return { x: 0, y: 0, w, h };
+    }
+
+    function processUploadedNailDesign(img) {
+      const c = mkNailCanvas(); // Returns a 300x400 canvas
+      const ctx = c.getContext('2d');
+      ctx.clearRect(0, 0, NW, NH);
+
+      // 1. Detect actual design region boundaries to crop out blank/white margins
+      const box = detectDesignBoundingBox(img);
+
+      // 2. Draw ONLY the design content, vertically flipped so the tip of the design faces the fingertip!
+      ctx.save();
+      ctx.translate(0, NH);
+      ctx.scale(1, -1);
+      ctx.drawImage(img, box.x, box.y, box.w, box.h, 0, 0, NW, NH);
+      ctx.restore();
+
+      // 3. Auto background keying: clean up any remaining solid white background to make it transparent
+      try {
+        const imgData = ctx.getImageData(0, 0, NW, NH);
+        const data = imgData.data;
+        
+        let whitePixels = 0;
+        const threshold = 238; 
+        
+        for (let i = 0; i < data.length; i += 4) {
+          const r = data[i];
+          const g = data[i+1];
+          const b = data[i+2];
+          const a = data[i+3];
+          
+          if (a > 50 && r > threshold && g > threshold && b > threshold) {
+            whitePixels++;
+          }
+        }
+        
+        // If white pixels make up a significant portion, clean them out
+        if (whitePixels > (NW * NH * 0.08)) {
+          for (let i = 0; i < data.length; i += 4) {
+            const r = data[i];
+            const g = data[i+1];
+            const b = data[i+2];
+            
+            if (r > threshold && g > threshold && b > threshold) {
+              data[i+3] = 0; // Transparent
+            }
+          }
+          ctx.putImageData(imgData, 0, 0);
+        }
+      } catch (err) {
+        console.error('White background keying failed:', err);
+      }
+
+      return c;
+    }
+
+    function handleHandUpload(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        const img = new Image();
+        img.onload = async function() {
+          const designCanvas = processUploadedNailDesign(img);
+          
+          // Register/update in generatedDesigns
+          generatedDesigns['custom-upload'] = {
+            id: 'custom-upload',
+            name: 'Custom Art',
+            tag: 'Your uploaded design',
+            accent: '#FF2D78',
+            canvas: designCanvas
+          };
+
+          // Check if custom-upload exists in NAIL_CATALOGUE
+          const exists = NAIL_CATALOGUE.some(item => item.id === 'custom-upload');
+          if (!exists) {
+            // Add custom art at the beginning of the list
+            NAIL_CATALOGUE.unshift({
+              id: 'custom-upload',
+              name: 'Custom Art',
+              tag: 'Your upload',
+              accent: '#FF2D78'
+            });
+          }
+
+          // Rebuild Carousel UI and Gallery Grid
+          buildCarouselUI();
+          buildCatalogueGridUI();
+
+          // Select this custom design
+          selectedDesignId = 'custom-upload';
+          updateCarouselSelection();
+
+          // Keep in camera mode for live AR overlay
+          arMode = 'camera';
+          uploadedImage = null;
+          document.getElementById('cam-mode-btn').style.display = 'none';
+          document.getElementById('flip-btn-ar').style.display = 'flex';
+
+          document.getElementById('perm-overlay').classList.add('hidden');
+          document.getElementById('pipeline-status').textContent = 'AR Active ✨';
+          
+          showToast('✨ Custom design applied live!');
+
+          // Ensure camera is active and tracking hand
+          if (!localStream) {
+            await startCameraPipeline();
+          }
+        };
+        img.src = e.target.result;
+      };
+      reader.readAsDataURL(file);
+      
+      // Reset trigger input
+      event.target.value = '';
+
+      // Force canvas render loop start in case it was off
+      if (activeTab === 'tryon' && !frameRequestId) {
+        frameRequestId = requestAnimationFrame(canvasRenderLoop);
+      }
+    }
+
+    async function switchToCameraMode() {
+      // Retained for layout compatibility, handles clean camera reload
+      arMode = 'camera';
+      uploadedImage = null;
+      document.getElementById('cam-mode-btn').style.display = 'none';
+      document.getElementById('flip-btn-ar').style.display = 'flex';
+      
+      showToast('📹 Switching to Live Camera...');
+      await startCameraPipeline();
+    }
+
+    function onHandResults(results) {
+      detectedLandmarks = results.multiHandLandmarks ?? [];
+    }
+
+    // Realtime Paint loop (Unified static upload + live camera canvas)
+    function canvasRenderLoop() {
+      if (activeTab !== 'tryon') return;
+
+      const video = document.getElementById('camera-video');
+      const canvas = document.getElementById('ar-canvas');
+      const ctx = canvas.getContext('2d');
+
+      if (arMode === 'camera') {
+        if (video && video.readyState >= 2) {
+          if (canvas.width !== video.videoWidth || canvas.height !== video.videoHeight) {
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+          }
+
+          ctx.save();
+          if (currentFacingMode === 'user') {
+            ctx.translate(canvas.width, 0);
+            ctx.scale(-1, 1);
+          }
+          ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+          ctx.restore();
+        }
+      } else if (arMode === 'upload' && uploadedImage) {
+        if (canvas.width !== uploadedImage.width || canvas.height !== uploadedImage.height) {
+          canvas.width = uploadedImage.width;
+          canvas.height = uploadedImage.height;
+        }
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.drawImage(uploadedImage, 0, 0, canvas.width, canvas.height);
+      }
+
+      const handLandmarksSet = detectedLandmarks;
+      const design = generatedDesigns[selectedDesignId];
+
+      if (design && handLandmarksSet.length > 0) {
+        handLandmarksSet.forEach((rawLms, handIdx) => {
+          if (!activeFilters[handIdx]) {
+            activeFilters[handIdx] = new LandmarkSmoother(21, 4.0, 50.0);
+          }
+          const smoothedLms = activeFilters[handIdx].smooth(rawLms);
+
+          const finalLms = (arMode === 'camera' && currentFacingMode === 'user')
+            ? smoothedLms.map(lm => ({ ...lm, x: 1.0 - lm.x }))
+            : smoothedLms;
+
+          for (const fingerName of FINGERS_LIST) {
+            if (activeFingers.has(fingerName)) {
+              const quad = computeNailQuad(finalLms, fingerName, canvas.width, canvas.height, nailLengthScale, nailWidthScale);
+              if (quad) {
+                renderNailOnQuad(ctx, design.canvas, quad, currentOpacity, selectedNailShape);
+              }
+            }
+          }
+        });
+      }
+
+      frameRequestId = requestAnimationFrame(canvasRenderLoop);
+    }
+
+    // ── SECTION 7: SHUTTER CAPTURE AND SOCIAL SAVING ──────────────────────────────
+    let capturedDataUrl = "";
+
+    function takeSnapshot() {
+      const canvas = document.getElementById('ar-canvas');
+      if (!canvas) {
+        showToast('📸 Canvas not ready!');
+        return;
+      }
+
+      const flash = document.getElementById('flash-effect');
+      flash.classList.add('flash-active');
+      setTimeout(() => flash.classList.remove('flash-active'), 360);
+
+      try {
+        capturedDataUrl = canvas.toDataURL('image/jpeg', 0.95);
+        
+        const img = document.getElementById('preview-img');
+        img.src = capturedDataUrl;
+        
+        document.getElementById('preview-overlay').classList.add('active');
+        showToast('💅 Snapshot captured!');
+      } catch (err) {
+        console.error('Snapshot capture failed:', err);
+        showToast('❌ Snapshot failed to capture.');
+      }
+    }
+
+    function closePreviewOverlay() {
+      document.getElementById('preview-overlay').classList.remove('active');
+      capturedDataUrl = "";
+    }
+
+    function downloadSnapshot() {
+      if (!capturedDataUrl) return;
+      
+      const link = document.createElement('a');
+      link.href = capturedDataUrl;
+      link.download = `nailar-tryon-look-${Date.now()}.jpg`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      showToast('💾 Saved to downloads successfully!');
+    }
+  </script>
+</body>
+</html>
