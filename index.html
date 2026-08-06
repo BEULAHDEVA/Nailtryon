@@ -3,12 +3,13 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>💅 NailAR Pro — AI Virtual Try-On</title>
-  <meta name="description" content="Professional-grade real-time AI-powered nail art virtual try-on using MediaPipe hand tracking and perspective-correct rendering." />
+  <title>💅 SlayNails — AI Nail Studio</title>
+  <meta name="description" content="Know Before You Slay. Professional real-time AI-powered nail art virtual try-on studio." />
+  <meta name="theme-color" content="#FFF8FC" />
   
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,900;1,700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Epilogue:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400&family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet" />
 
   <!-- MediaPipe CDN dependencies -->
   <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
@@ -17,31 +18,113 @@
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
+    /* ══════════════════════════════════════════════════════════
+       DESIGN SYSTEM — SLAYNAILS (GLOSSIER & RHODE AESTHETIC)
+    ══════════════════════════════════════════════════════════ */
     :root {
-      --bg:        #07070C;
-      --surface:   rgba(18, 18, 32, 0.85);
-      --card:      rgba(30, 30, 52, 0.70);
-      --pink-hot:  #FF2D78;
-      --pink-neon: #FF6EB4;
-      --pink-soft: #FFB3D1;
-      --border:    rgba(255, 45, 120, 0.35);
-      --glow:      rgba(255, 45, 120, 0.22);
-      --text:      #FFE4F0;
-      --muted:     #C084A8;
-      --radius:    20px;
+      /* Brand Color Palette */
+      --blush:     #FEC0FF;
+      --rose:      #FC93E8;
+      --pink:      #FF86E0;
+      --magenta:   #EE4FC5;
+      --accent:    #DF37D6;
+
+      /* Light Theme Neutrals */
+      --bg:          #FFF8FC;
+      --bg-surface:  #FFFFFF;
+      --bg-card:     #F8EEF8;
+      --bg-alt:      #F2E6F4;
+      --text:        #24141F;
+      --text-muted:  #7A5270;
+      --text-dim:    #A3809B;
+      --border:      rgba(223, 55, 214, 0.16);
+      --border-soft: rgba(223, 55, 214, 0.08);
+      --glow:        rgba(238, 79, 197, 0.22);
+      --glass:       rgba(255, 255, 255, 0.78);
+      --glass-card:  rgba(255, 248, 252, 0.68);
+
+      /* Gradients */
+      --grad-primary: linear-gradient(135deg, #FF86E0 0%, #EE4FC5 50%, #DF37D6 100%);
+      --grad-soft:    linear-gradient(135deg, #FEC0FF 0%, #FC93E8 100%);
+      --grad-glow:    radial-gradient(ellipse 80% 50% at 50% -10%, rgba(254, 192, 255, 0.45) 0%, transparent 70%);
+
+      /* Radii */
+      --r-sm: 12px;
+      --r-md: 20px;
+      --r-lg: 24px;
+      --r-xl: 36px;
+      --r-full: 9999px;
+
+      /* Shadows */
+      --shadow-sm:  0 4px 14px rgba(36, 20, 31, 0.04);
+      --shadow-md:  0 10px 30px rgba(223, 55, 214, 0.10);
+      --shadow-lg:  0 18px 45px rgba(223, 55, 214, 0.18);
+      --shadow-glow: 0 0 25px rgba(238, 79, 197, 0.35);
+
+      /* Easing */
+      --ease-spring: cubic-bezier(0.175, 0.885, 0.32, 1.275);
+      --ease-out:    cubic-bezier(0.19, 1, 0.22, 1);
     }
+
+    /* Dark Mode Theme Overrides */
+    body.dark-theme {
+      --bg:          #1A0A16;
+      --bg-surface:  #24141F;
+      --bg-card:     #3B2135;
+      --bg-alt:      #2D1829;
+      --text:        #FFF8FC;
+      --text-muted:  #D4B5CD;
+      --text-dim:    #9A7292;
+      --border:      rgba(252, 147, 232, 0.22);
+      --border-soft: rgba(252, 147, 232, 0.12);
+      --glow:        rgba(255, 134, 224, 0.32);
+      --glass:       rgba(36, 20, 31, 0.82);
+      --glass-card:  rgba(59, 33, 53, 0.72);
+      --shadow-md:   0 10px 30px rgba(0, 0, 0, 0.35);
+      --shadow-lg:   0 18px 45px rgba(0, 0, 0, 0.5);
+    }
+
+    html { -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
 
     body {
       background: var(--bg);
       color: var(--text);
-      font-family: 'Inter', sans-serif;
+      font-family: 'Epilogue', -apple-system, BlinkMacSystemFont, sans-serif;
       height: 100dvh;
       overflow: hidden;
       user-select: none;
       -webkit-tap-highlight-color: transparent;
+      transition: background-color 0.3s ease, color 0.3s ease;
     }
 
-    /* ── SCREEN SYSTEM ────────────────────────────────── */
+    h1, h2, h3, .serif {
+      font-family: 'Libre Baskerville', Georgia, serif;
+    }
+
+    /* ══════════════════════════════════════════════════════════
+       ANIMATIONS
+    ══════════════════════════════════════════════════════════ */
+    @keyframes fadeSlideUp {
+      from { opacity: 0; transform: translateY(18px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes pulseGlow {
+      0%, 100% { transform: scale(1); filter: drop-shadow(0 0 10px var(--glow)); }
+      50%       { transform: scale(1.08); filter: drop-shadow(0 0 25px var(--magenta)); }
+    }
+    @keyframes floatSoft {
+      0%, 100% { transform: translateY(0); }
+      50%       { transform: translateY(-8px); }
+    }
+    @keyframes rotateSparkle {
+      0%   { transform: rotate(0deg) scale(1); }
+      50%  { transform: rotate(180deg) scale(1.15); }
+      100% { transform: rotate(360deg) scale(1); }
+    }
+
+    /* ══════════════════════════════════════════════════════════
+       SCREEN SYSTEM
+    ══════════════════════════════════════════════════════════ */
     .screen {
       display: none;
       flex-direction: column;
@@ -49,273 +132,650 @@
       width: 100%;
       position: absolute;
       inset: 0;
+      overflow-y: auto;
+      scrollbar-width: none;
     }
-    .screen.active {
-      display: flex;
-    }
+    .screen::-webkit-scrollbar { display: none; }
+    .screen.active { display: flex; }
 
-    /* ── REUSABLE UI ELEMENTS ─────────────────────────── */
-    .glass {
-      background: var(--surface);
+    /* ══════════════════════════════════════════════════════════
+       GLOBAL NAVBAR & HEADER
+    ══════════════════════════════════════════════════════════ */
+    .app-header {
+      position: sticky;
+      top: 0;
+      z-index: 60;
+      padding: 16px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: var(--glass);
       backdrop-filter: blur(20px) saturate(180%);
       -webkit-backdrop-filter: blur(20px) saturate(180%);
-      border: 1px solid var(--border);
-      box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.5);
+      border-bottom: 1px solid var(--border-soft);
+      box-shadow: var(--shadow-sm);
+    }
+    .brand-title {
+      font-family: 'Libre Baskerville', serif;
+      font-size: 22px;
+      font-weight: 700;
+      color: var(--text);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      cursor: pointer;
+      text-decoration: none;
+    }
+    .brand-title span {
+      color: var(--magenta);
+      font-style: italic;
     }
 
-    .btn-pink {
-      background: linear-gradient(135deg, var(--pink-hot), #E91E63);
-      color: #fff;
+    .nav-links {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+    }
+    .nav-link {
+      font-family: 'Epilogue', sans-serif;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-muted);
+      cursor: pointer;
+      border: none;
+      background: none;
+      padding: 6px 12px;
+      border-radius: var(--r-full);
+      transition: all 0.2s ease;
+    }
+    .nav-link:hover, .nav-link.active {
+      color: var(--magenta);
+      background: var(--bg-card);
+    }
+
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .theme-toggle-btn {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      border: 1px solid var(--border);
+      background: var(--bg-surface);
+      color: var(--text);
+      font-size: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: all 0.25s var(--ease-spring);
+    }
+    .theme-toggle-btn:hover {
+      transform: scale(1.08) rotate(15deg);
+      border-color: var(--magenta);
+      box-shadow: var(--shadow-md);
+    }
+
+    /* ══════════════════════════════════════════════════════════
+       BUTTONS & UI ELEMENTS
+    ══════════════════════════════════════════════════════════ */
+    .btn-slay {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      background: var(--grad-primary);
+      color: #FFFFFF;
       border: none;
       padding: 14px 28px;
-      border-radius: 50px;
-      font-size: 15px;
+      border-radius: var(--r-full);
+      font-family: 'Epilogue', sans-serif;
+      font-size: 14px;
       font-weight: 700;
-      font-family: 'Inter', sans-serif;
+      letter-spacing: 0.3px;
       cursor: pointer;
-      box-shadow: 0 6px 20px rgba(255, 45, 120, 0.40);
-      transition: all 0.25s cubic-bezier(0.25, 0.8, 0.25, 1);
+      box-shadow: var(--shadow-md);
+      transition: transform 0.25s var(--ease-spring), box-shadow 0.25s ease;
+      position: relative;
+      overflow: hidden;
+      text-decoration: none;
     }
-    .btn-pink:hover {
+    .btn-slay:hover {
+      transform: translateY(-2px) scale(1.02);
+      box-shadow: var(--shadow-lg), var(--shadow-glow);
+    }
+    .btn-slay:active { transform: translateY(0) scale(0.97); }
+
+    .btn-outline-slay {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      background: var(--bg-surface);
+      color: var(--text);
+      border: 1.5px solid var(--border);
+      padding: 13px 26px;
+      border-radius: var(--r-full);
+      font-family: 'Epilogue', sans-serif;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.22s ease;
+    }
+    .btn-outline-slay:hover {
+      border-color: var(--magenta);
+      color: var(--magenta);
+      background: var(--bg-card);
       transform: translateY(-2px);
-      box-shadow: 0 8px 26px rgba(255, 45, 120, 0.55);
-    }
-    .btn-pink:active {
-      transform: translateY(0);
     }
 
-    .icon-btn {
+    .icon-btn-slay {
       width: 44px;
       height: 44px;
       border-radius: 50%;
-      background: rgba(255, 255, 255, 0.08);
-      border: 1px solid rgba(255, 255, 255, 0.15);
+      background: var(--glass);
+      border: 1px solid var(--border);
       display: flex;
       align-items: center;
       justify-content: center;
       cursor: pointer;
       font-size: 16px;
-      color: var(--pink-soft);
-      transition: all 0.22s ease;
+      color: var(--text);
+      transition: all 0.22s var(--ease-spring);
+      backdrop-filter: blur(14px);
     }
-    .icon-btn:hover {
-      border-color: var(--pink-hot);
-      background: rgba(255, 45, 120, 0.15);
-      box-shadow: 0 0 12px var(--glow);
-    }
-
-    /* ── NAVIGATION ───────────────────────────────────── */
-    .bottom-nav {
-      position: absolute;
-      bottom: 0;
-      left: 0;
-      right: 0;
-      z-index: 50;
-      padding: 0 24px 24px;
-      pointer-events: none;
-    }
-    .bottom-nav-inner {
-      pointer-events: auto;
-      border-radius: 40px;
-      display: flex;
-      justify-content: space-around;
-      padding: 8px 0;
-    }
-    .nav-tab {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 4px;
-      padding: 6px 24px;
-      cursor: pointer;
-      border: none;
-      background: none;
-      color: var(--muted);
-      font-family: 'Inter', sans-serif;
-      font-size: 10px;
-      font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: 0.8px;
-      transition: all 0.25s ease;
-    }
-    .nav-tab.active {
-      color: var(--pink-hot);
-    }
-    .nav-tab-icon {
-      width: 32px;
-      height: 32px;
-      border-radius: 50%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 15px;
-      transition: all 0.25s ease;
-    }
-    .nav-tab.active .nav-tab-icon {
-      background: rgba(255, 45, 120, 0.15);
-      border: 1px solid var(--pink-hot);
-      box-shadow: 0 0 12px var(--pink-hot);
+    .icon-btn-slay:hover {
+      border-color: var(--magenta);
+      color: var(--magenta);
+      transform: scale(1.08);
+      box-shadow: var(--shadow-md);
     }
 
-    /* ══════════════════════════════════════════════════
-       EXPLORE / HOME SCREEN
-    ═══════════════════════════════════════════════════ */
+    /* ══════════════════════════════════════════════════════════
+       HOMEPAGE / EXPLORE SCREEN
+    ══════════════════════════════════════════════════════════ */
     #screen-home {
-      background: radial-gradient(circle at top right, #1f0b18, var(--bg) 60%);
-      padding-bottom: 110px;
+      background: var(--bg);
+      background-image: var(--grad-glow);
+      padding-bottom: 120px;
     }
-    .home-header {
-      padding: 30px 24px 15px;
-      display: flex;
-      justify-content: space-between;
+    .hero-section {
+      padding: 48px 24px 36px;
+      text-align: center;
+      max-width: 720px;
+      margin: 0 auto;
+      position: relative;
+    }
+    .hero-eyebrow {
+      display: inline-flex;
       align-items: center;
-    }
-    .home-title {
-      font-family: 'Playfair Display', serif;
-      font-size: 36px;
-      font-weight: 900;
-      background: linear-gradient(135deg, #FFF, var(--pink-soft));
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      letter-spacing: -0.5px;
-    }
-    .home-sub {
+      gap: 6px;
+      font-family: 'Epilogue', sans-serif;
       font-size: 11px;
-      color: var(--muted);
+      font-weight: 700;
       text-transform: uppercase;
-      letter-spacing: 2px;
-      margin-top: 4px;
-      font-weight: 500;
+      letter-spacing: 2.5px;
+      color: var(--magenta);
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      padding: 6px 16px;
+      border-radius: var(--r-full);
+      margin-bottom: 16px;
     }
-    .brand-logo {
-      width: 48px;
-      height: 48px;
-      border-radius: 50%;
-      background: linear-gradient(135deg, var(--pink-hot), var(--pink-neon));
+    .hero-title {
+      font-family: 'Libre Baskerville', serif;
+      font-size: 48px;
+      font-weight: 700;
+      color: var(--text);
+      line-height: 1.15;
+      letter-spacing: -1px;
+      margin-bottom: 14px;
+    }
+    .hero-title i {
+      color: var(--magenta);
+      font-weight: 400;
+    }
+    .hero-subtitle {
+      font-family: 'Epilogue', sans-serif;
+      font-size: 16px;
+      color: var(--text-muted);
+      line-height: 1.6;
+      margin-bottom: 28px;
+      max-width: 480px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+    .hero-btn-group {
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 22px;
-      box-shadow: 0 0 15px var(--glow);
+      gap: 14px;
+      flex-wrap: wrap;
     }
 
-    .hero-banner {
-      margin: 10px 24px 20px;
-      border-radius: var(--radius);
-      padding: 20px;
-      display: flex;
-      align-items: center;
-      gap: 16px;
-      cursor: pointer;
-      transition: all 0.3s ease;
-      background: linear-gradient(135deg, rgba(255, 45, 120, 0.18), rgba(18, 18, 32, 0.60));
-    }
-    .hero-banner:hover {
-      transform: translateY(-2px);
-      border-color: var(--pink-neon);
-      box-shadow: 0 8px 24px var(--glow);
-    }
-    .hero-icon {
-      font-size: 32px;
-      animation: pulseEmoji 2s infinite ease-in-out;
-    }
-    @keyframes pulseEmoji {
-      0%, 100% { transform: scale(1); }
-      50% { transform: scale(1.12); }
-    }
-    .hero-text h3 {
-      font-family: 'Playfair Display', serif;
-      font-size: 20px;
-      color: #fff;
-    }
-    .hero-text p {
-      font-size: 12px;
-      color: var(--pink-soft);
-      margin-top: 4px;
-    }
-    .hero-arrow {
-      margin-left: auto;
-      color: var(--pink-hot);
-      font-size: 20px;
-      font-weight: bold;
-    }
-
-    .home-scroll {
-      overflow-y: auto;
+    /* Section Wrappers */
+    .content-container {
+      max-width: 1080px;
+      margin: 0 auto;
       padding: 0 24px;
       display: flex;
       flex-direction: column;
-      gap: 20px;
-      flex: 1;
-      scrollbar-width: none;
+      gap: 48px;
     }
-    .home-scroll::-webkit-scrollbar { display: none; }
-    
-    .section-title {
-      font-size: 14px;
-      text-transform: uppercase;
-      letter-spacing: 1.5px;
-      color: var(--pink-soft);
-      margin-bottom: 8px;
-      font-weight: 600;
+    .section-head {
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      margin-bottom: 20px;
+    }
+    .section-title-lg {
+      font-family: 'Libre Baskerville', serif;
+      font-size: 26px;
+      font-weight: 700;
+      color: var(--text);
+    }
+    .section-title-lg span {
+      color: var(--magenta);
     }
 
-    .nail-card {
-      background: var(--card);
-      border-radius: 24px;
+    /* Trending Cards */
+    .trending-cards-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 20px;
+    }
+    .slay-card {
+      background: var(--bg-surface);
+      border-radius: var(--r-lg);
+      border: 1px solid var(--border-soft);
       overflow: hidden;
-      border: 1px solid rgba(255, 255, 255, 0.05);
-      box-shadow: 0 6px 18px rgba(0, 0, 0, 0.2);
-      transition: all 0.3s ease;
+      box-shadow: var(--shadow-sm);
+      transition: all 0.3s var(--ease-out);
+      cursor: pointer;
+      position: relative;
     }
-    .nail-card:hover {
+    .slay-card:hover {
+      transform: translateY(-6px);
       border-color: var(--border);
-      transform: translateY(-2px);
+      box-shadow: var(--shadow-md);
     }
-    .nail-card-hero {
-      width: 100%;
+    .slay-card-hero {
       height: 190px;
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 70px;
+      font-size: 64px;
       position: relative;
-      background: linear-gradient(135deg, #16162a, #2b1328);
     }
-    .nail-card-hero::after {
-      content: '';
-      position: absolute;
-      inset: 0;
-      background: linear-gradient(to top, rgba(7,7,12,0.85), transparent);
-    }
-    .nail-card-footer {
-      padding: 16px 20px;
+    .slay-card-body {
+      padding: 20px;
       display: flex;
       justify-content: space-between;
       align-items: center;
-      background: rgba(10, 10, 18, 0.90);
+      background: var(--bg-surface);
+      border-top: 1px solid var(--border-soft);
     }
-    .nail-card-title {
-      font-family: 'Playfair Display', serif;
+    .slay-card-name {
+      font-family: 'Libre Baskerville', serif;
       font-size: 18px;
       font-weight: 700;
-      color: #fff;
+      color: var(--text);
     }
-    .nail-card-tag {
-      font-size: 10px;
-      color: var(--muted);
+    .slay-card-tag {
+      font-family: 'Epilogue', sans-serif;
+      font-size: 11px;
+      color: var(--magenta);
       text-transform: uppercase;
       letter-spacing: 1px;
-      margin-top: 3px;
+      font-weight: 600;
+      margin-top: 4px;
     }
 
-    /* ── TRY-ON SCREEN (Core AR) ────────────────────────── */
+    /* Popular Collections Pills */
+    .collections-chips {
+      display: flex;
+      gap: 12px;
+      overflow-x: auto;
+      padding-bottom: 8px;
+      scrollbar-width: none;
+    }
+    .collections-chips::-webkit-scrollbar { display: none; }
+    .collection-chip {
+      flex-shrink: 0;
+      padding: 12px 24px;
+      background: var(--bg-surface);
+      border: 1px solid var(--border-soft);
+      border-radius: var(--r-full);
+      font-family: 'Epilogue', sans-serif;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text);
+      cursor: pointer;
+      transition: all 0.22s ease;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .collection-chip:hover {
+      border-color: var(--magenta);
+      color: var(--magenta);
+      background: var(--bg-card);
+      transform: translateY(-2px);
+    }
+
+    /* How It Works Section */
+    .how-it-works-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 16px;
+    }
+    .step-card {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-soft);
+      border-radius: var(--r-lg);
+      padding: 24px 20px;
+      text-align: center;
+      transition: all 0.25s ease;
+    }
+    .step-card:hover {
+      border-color: var(--border);
+      box-shadow: var(--shadow-sm);
+      transform: translateY(-3px);
+    }
+    .step-num {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: var(--grad-soft);
+      color: var(--text);
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 14px;
+      font-size: 14px;
+    }
+    .step-title {
+      font-family: 'Libre Baskerville', serif;
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--text);
+      margin-bottom: 6px;
+    }
+    .step-desc {
+      font-size: 12px;
+      color: var(--text-muted);
+      line-height: 1.5;
+    }
+
+    /* Our Story Section */
+    .story-card {
+      background: linear-gradient(135deg, var(--bg-surface) 0%, var(--bg-card) 100%);
+      border: 1px solid var(--border);
+      border-radius: var(--r-lg);
+      padding: 40px 32px;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 32px;
+      align-items: center;
+      box-shadow: var(--shadow-sm);
+    }
+    @media (max-width: 768px) {
+      .story-card { grid-template-columns: 1fr; padding: 28px 20px; }
+    }
+    .story-title {
+      font-size: 32px;
+      margin-bottom: 14px;
+      line-height: 1.2;
+    }
+    .story-text {
+      font-size: 14px;
+      color: var(--text-muted);
+      line-height: 1.7;
+    }
+
+    /* Team Section */
+    .team-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 20px;
+    }
+    .team-card {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-soft);
+      border-radius: var(--r-lg);
+      padding: 24px;
+      text-align: center;
+      transition: all 0.25s ease;
+    }
+    .team-card:hover {
+      border-color: var(--magenta);
+      box-shadow: var(--shadow-md);
+      transform: translateY(-4px);
+    }
+    .team-avatar {
+      width: 72px;
+      height: 72px;
+      border-radius: 50%;
+      background: var(--grad-soft);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 32px;
+      margin: 0 auto 14px;
+      box-shadow: var(--shadow-sm);
+    }
+    .team-name {
+      font-family: 'Libre Baskerville', serif;
+      font-size: 17px;
+      font-weight: 700;
+      color: var(--text);
+    }
+    .team-role {
+      font-size: 12px;
+      color: var(--magenta);
+      font-weight: 600;
+      margin-top: 4px;
+    }
+
+    /* ══════════════════════════════════════════════════════════
+       BEAUTY MIRROR TRY-ON STUDIO
+    ══════════════════════════════════════════════════════════ */
     #screen-tryon {
-      background: #000;
+      background: var(--bg);
+      background-image: var(--grad-glow);
+      overflow-y: auto;
+      align-items: center;
+      padding-bottom: 120px;
     }
-    #camera-video {
-      display: none; /* read frame by frame programmatically */
+
+    .mirror-studio-header {
+      width: 100%;
+      max-width: 960px;
+      padding: 20px 24px 12px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
     }
+
+    /* Collapsible Bottom Customize Panel */
+    .customize-drawer {
+      position: fixed;
+      top: 0;
+      right: 0;
+      height: 100vh;
+      width: 100%;
+      max-width: 340px;
+      background: var(--bg-surface);
+      border-left: 1.5px solid var(--border);
+      border-radius: var(--r-lg) 0 0 var(--r-lg);
+      padding: 20px 24px;
+      display: none !important;
+      flex-direction: column;
+      gap: 14px;
+      box-shadow: var(--shadow-md);
+      animation: slideInRight 0.3s var(--ease-out);
+    }
+    .customize-drawer.active {
+      display: flex !important;
+    }
+    @keyframes slideInRight {
+      from { transform: translateX(100%); opacity: 0; }
+      to { transform: translateX(0); opacity: 1; }
+    }
+
+    /* Nail Carousel & Palette Sheet Thumbnails */
+    .nail-carousel-container {
+      display: flex;
+      gap: 16px;
+      overflow-x: auto;
+      padding: 12px 4px;
+      scrollbar-width: none;
+      width: 100%;
+    }
+    .nail-carousel-container::-webkit-scrollbar { display: none; }
+    .carousel-item {
+      flex-shrink: 0;
+      width: 85px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      cursor: pointer;
+      gap: 8px;
+      transition: transform 0.2s ease;
+    }
+    .carousel-item:hover { transform: translateY(-4px); }
+    .carousel-item.selected .carousel-thumb-box {
+      border-color: var(--magenta);
+      box-shadow: 0 0 16px var(--magenta);
+    }
+    .carousel-thumb-box {
+      width: 76px;
+      height: 110px;
+      border-radius: 18px;
+      background: var(--bg-card);
+      border: 2px solid var(--border-soft);
+      position: relative;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s ease;
+    }
+    .carousel-thumb-box img, .carousel-thumb-box canvas {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+    .carousel-check {
+      position: absolute;
+      top: 6px;
+      right: 6px;
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      color: #fff;
+      font-size: 11px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+    }
+    .carousel-label {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text);
+      text-align: center;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 85px;
+    }
+
+    /* Trending Quick Palette Bar */
+    .quick-palette-bar {
+      width: 100%;
+      max-width: 960px;
+      margin-top: 16px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      overflow-x: auto;
+      scrollbar-width: none;
+      padding-bottom: 4px;
+    }
+    .quick-palette-bar::-webkit-scrollbar { display: none; }
+    .color-chip-pill {
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 20px;
+      background: var(--bg-surface);
+      border: 1.5px solid var(--border-soft);
+      border-radius: var(--r-full);
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text);
+      transition: all 0.22s ease;
+      box-shadow: var(--shadow-sm);
+    }
+    .color-chip-pill:hover, .color-chip-pill.active {
+      border-color: var(--magenta);
+      color: var(--magenta);
+      background: var(--bg-card);
+      transform: translateY(-2px);
+    }
+    .color-chip-dot {
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      flex-shrink: 0;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+    }
+
+    /* Action Control Bar */
+    .mirror-action-bar {
+      margin-top: 20px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    .beauty-mirror-wrapper {
+      width: 100%;
+      max-width: 960px;
+      padding: 0 20px;
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .beauty-mirror-card {
+      width: 100%;
+      height: 560px;
+      max-height: 72vh;
+      border-radius: 36px;
+      border: 3.5px solid var(--border);
+      background: #0A0408;
+      position: relative;
+      overflow: hidden;
+      box-shadow: var(--shadow-lg), 0 0 40px var(--glow);
+      transition: all 0.3s var(--ease-out);
+    }
+    @media (max-width: 768px) {
+      .beauty-mirror-card { height: 420px; border-radius: 28px; }
+    }
+
+    #camera-video { display: none; }
     #ar-canvas {
       position: absolute;
       inset: 0;
@@ -324,777 +784,698 @@
       object-fit: cover;
     }
 
-    /* Permission overlay */
+    .mirror-badge {
+      position: absolute;
+      top: 16px; right: 16px;
+      z-index: 20;
+      background: rgba(36, 20, 31, 0.76);
+      backdrop-filter: blur(16px);
+      border: 1px solid rgba(252, 147, 232, 0.35);
+      color: #FFF8FC;
+      font-size: 12px;
+      font-weight: 700;
+      padding: 6px 16px;
+      border-radius: var(--r-full);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      box-shadow: var(--shadow-sm);
+    }
+
+    /* Full Makeup Palette Bottom Sheet Drawer */
+    #full-palette-drawer {
+      position: fixed;
+      inset: 0;
+      z-index: 220;
+      background: rgba(26, 10, 22, 0.65);
+      backdrop-filter: blur(8px);
+      display: none !important;
+      align-items: flex-end;
+      justify-content: center;
+    }
+    #full-palette-drawer.active { display: flex !important; }
+    .palette-sheet-content {
+      width: 100%;
+      max-width: 680px;
+      max-height: 78vh;
+      background: var(--bg-surface);
+      border-radius: 32px 32px 0 0;
+      border-top: 2px solid var(--border);
+      padding: 28px;
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+      overflow-y: auto;
+      box-shadow: var(--shadow-lg);
+      animation: slideUp 0.35s var(--ease-out);
+    }
+
     #perm-overlay {
       position: absolute;
       inset: 0;
       z-index: 100;
-      background: #090910;
+      background: rgba(26, 10, 22, 0.94);
       display: flex;
       align-items: center;
       justify-content: center;
       padding: 24px;
+      backdrop-filter: blur(20px);
     }
     #perm-overlay.hidden { display: none !important; }
+
+
     .perm-card {
-      border-radius: 28px;
-      padding: 36px 24px;
+      border-radius: var(--r-lg);
+      padding: 40px 32px;
       text-align: center;
-      max-width: 360px;
+      max-width: 400px;
       width: 100%;
+      background: var(--bg-surface);
+      border: 1px solid var(--border);
+      box-shadow: var(--shadow-lg);
     }
     .perm-icon {
-      font-size: 60px;
-      margin-bottom: 20px;
+      font-size: 56px;
+      margin-bottom: 16px;
       display: inline-block;
       animation: pulseGlow 2.5s infinite;
     }
-    @keyframes pulseGlow {
-      0%, 100% { transform: scale(1); filter: drop-shadow(0 0 5px rgba(255,45,120,0.2)); }
-      50% { transform: scale(1.08); filter: drop-shadow(0 0 20px rgba(255,45,120,0.7)); }
-    }
     .perm-title {
-      font-family: 'Playfair Display', serif;
-      font-size: 26px;
-      color: #fff;
-      margin-bottom: 12px;
+      font-family: 'Libre Baskerville', serif;
+      font-size: 24px;
+      color: var(--text);
+      margin-bottom: 10px;
     }
     .perm-body {
-      font-size: 14px;
-      color: var(--pink-soft);
+      font-size: 13.5px;
+      color: var(--text-muted);
       line-height: 1.6;
       margin-bottom: 24px;
     }
 
-    /* AR Top bar overlay */
-    #tryon-topbar {
-      position: absolute;
-      top: 0;
-      left: 0;
-      right: 0;
-      z-index: 30;
-      padding: 20px 24px;
-      background: linear-gradient(to bottom, rgba(7,7,12,0.92), rgba(7,7,12,0));
-    }
-    .topbar-row {
-      display: flex;
-      justify-content: space-between;
-      align-items: flex-start;
-    }
-    .topbar-logo {
-      font-family: 'Playfair Display', serif;
-      font-size: 24px;
-      font-weight: 900;
-      color: #fff;
-    }
-    .topbar-logo span {
-      color: var(--pink-hot);
-    }
-    .topbar-status {
-      font-size: 9px;
-      color: var(--pink-soft);
-      text-transform: uppercase;
-      letter-spacing: 1.5px;
-      margin-top: 3px;
-      font-weight: 600;
-      display: flex;
-      align-items: center;
-      gap: 6px;
-    }
-    .status-dot {
-      width: 6px;
-      height: 6px;
-      border-radius: 50%;
-      background: var(--pink-hot);
-      box-shadow: 0 0 8px var(--pink-hot);
-      animation: blinker 1.5s infinite;
-    }
-
-    /* AR Control Overlay Panel */
     .ar-controls-panel {
       display: flex;
       flex-direction: column;
-      gap: 8px;
-      margin-top: 12px;
-      align-items: flex-start;
+      gap: 12px;
     }
-    .ar-sliders-row {
-      display: flex;
-      gap: 8px;
-      flex-wrap: wrap;
-    }
+    .ar-sliders-row { display: flex; gap: 10px; flex-wrap: wrap; }
     .ar-pill {
-      background: rgba(18, 18, 32, 0.70);
-      backdrop-filter: blur(15px);
-      -webkit-backdrop-filter: blur(15px);
-      border: 1px solid rgba(255, 45, 120, 0.25);
-      border-radius: 30px;
-      padding: 6px 14px;
+      background: var(--bg-surface);
+      border: 1px solid var(--border);
+      border-radius: var(--r-full);
+      padding: 8px 16px;
       display: flex;
       align-items: center;
-      gap: 8px;
+      gap: 10px;
     }
     .ar-slider-label {
-      font-size: 9px;
+      font-family: 'Epilogue', sans-serif;
+      font-size: 11px;
       text-transform: uppercase;
-      letter-spacing: 0.8px;
-      color: var(--pink-soft);
+      letter-spacing: 1px;
+      color: var(--magenta);
       font-weight: 700;
     }
-    .ar-slider {
-      width: 65px;
-      accent-color: var(--pink-hot);
-      cursor: pointer;
-      height: 4px;
-    }
+    .ar-slider { width: 80px; accent-color: var(--magenta); cursor: pointer; height: 4px; }
 
-    /* Quick finger selection pills */
-    .finger-pills-row {
-      display: flex;
-      gap: 5px;
-      overflow-x: auto;
-      scrollbar-width: none;
-      padding: 2px 0;
-      width: 100%;
+    .shape-pills-row, .finger-pills-row {
+      display: flex; gap: 8px;
+      overflow-x: auto; scrollbar-width: none;
+      padding: 2px 0; width: 100%; align-items: center;
     }
-    .finger-pills-row::-webkit-scrollbar { display: none; }
-    .finger-pill {
-      font-size: 9px;
-      padding: 4px 10px;
-      border-radius: 20px;
-      border: 1px solid rgba(255, 255, 255, 0.12);
-      background: rgba(255,255,255,0.05);
-      color: var(--muted);
+    .shape-pills-row::-webkit-scrollbar, .finger-pills-row::-webkit-scrollbar { display: none; }
+    .shape-pill, .finger-pill {
+      font-family: 'Epilogue', sans-serif;
+      font-size: 11px;
+      padding: 6px 16px;
+      border-radius: var(--r-full);
+      border: 1px solid var(--border);
+      background: var(--bg-surface);
+      color: var(--text-muted);
       cursor: pointer;
-      text-transform: capitalize;
       font-weight: 600;
       transition: all 0.2s ease;
       white-space: nowrap;
     }
-    .finger-pill.active {
-      border-color: var(--pink-hot);
-      background: rgba(255, 45, 120, 0.22);
-      color: #fff;
-      box-shadow: 0 0 8px rgba(255, 45, 120, 0.35);
+    .shape-pill.active, .finger-pill.active {
+      border-color: var(--magenta);
+      background: var(--magenta);
+      color: #FFFFFF;
+      box-shadow: 0 0 12px var(--magenta);
     }
 
-    /* Nail Shape selector pills */
-    .shape-pills-row {
-      display: flex;
-      gap: 5px;
-      overflow-x: auto;
-      scrollbar-width: none;
-      padding: 2px 0;
-      width: 100%;
+    /* ══════════════════════════════════════════════════════════
+       SNAPSHOT PREVIEW OVERLAY
+    ══════════════════════════════════════════════════════════ */
+    #preview-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 200;
+      background: var(--bg);
+      background-image: var(--grad-glow);
+      display: none !important;
+      flex-direction: column;
       align-items: center;
+      justify-content: space-between;
+      padding-bottom: 28px;
+      animation: fadeSlideUp 0.35s var(--ease-out);
     }
-    .shape-pills-row::-webkit-scrollbar { display: none; }
-    .shape-pill {
-      font-size: 9px;
-      padding: 4px 10px;
-      border-radius: 20px;
-      border: 1px solid rgba(255, 255, 255, 0.12);
-      background: rgba(255,255,255,0.05);
-      color: var(--muted);
-      cursor: pointer;
-      text-transform: capitalize;
-      font-weight: 600;
-      transition: all 0.2s ease;
-      white-space: nowrap;
-    }
-    .shape-pill.active {
-      border-color: #FFD700;
-      background: rgba(255, 215, 0, 0.18);
-      color: #fff;
-      box-shadow: 0 0 8px rgba(255, 215, 0, 0.40);
-    }
-
-    /* AR Bottom Panel */
-    #tryon-bottom {
-      position: absolute;
-      bottom: 0;
-      left: 0;
-      right: 0;
-      z-index: 30;
-      padding: 16px 0 28px;
-      background: linear-gradient(to top, rgba(7,7,12,0.96) 80%, rgba(7,7,12,0));
-      border-top: 1px solid rgba(255, 255, 255, 0.04);
-    }
-    
-    .carousel-section {
-      margin-bottom: 12px;
-    }
-
-    /* Shutter Controls */
-    .shutter-row {
+    #preview-overlay.active { display: flex !important; }
+    .preview-header {
+      width: 100%;
+      max-width: 900px;
+      padding: 24px;
       display: flex;
       align-items: center;
       justify-content: space-between;
-      padding: 0 44px;
-      margin-top: 4px;
     }
-    
-    .shutter-btn-wrap {
-      width: 76px;
-      height: 76px;
-      border-radius: 50%;
-      border: 3px solid var(--pink-hot);
-      background: rgba(255, 45, 120, 0.08);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      cursor: pointer;
-      box-shadow: 0 0 20px var(--glow), inset 0 0 12px var(--glow);
-      transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    .preview-frame {
+      width: 100%;
+      max-width: 1100px;
+      height: 700px;
+      max-height: 85vh;
+      margin: 0 24px;
+      border-radius: 36px;
+      overflow: hidden;
+      border: 3.5px solid var(--border);
+      position: relative;
+      background: #0A0408;
+      box-shadow: var(--shadow-lg), 0 0 40px var(--glow);
     }
-    .shutter-btn-wrap:hover {
-      transform: scale(1.06);
-    }
-    .shutter-btn-wrap:active {
-      transform: scale(0.92);
-    }
-    .shutter-inner {
-      width: 58px;
-      height: 58px;
-      border-radius: 50%;
-      background: linear-gradient(135deg, var(--pink-hot), var(--pink-neon));
-      box-shadow: 0 0 15px var(--pink-hot);
-    }
+    #preview-img { width: 100%; height: 100%; object-fit: contain; }
 
-    /* ── DESIGN GALLERY SCREEN ────────────────────────── */
-    #screen-design {
-      background: radial-gradient(circle at bottom left, #120a1f, var(--bg) 70%);
-      padding-bottom: 110px;
-    }
+    /* ══════════════════════════════════════════════════════════
+       DESIGNS GALLERY GRID
+    ══════════════════════════════════════════════════════════ */
     .design-grid {
       display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 16px;
+      grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+      gap: 20px;
       padding: 0 24px;
+      max-width: 1080px;
+      margin: 0 auto;
       overflow-y: auto;
       flex: 1;
-      scrollbar-width: none;
     }
-    .design-grid::-webkit-scrollbar { display: none; }
-
     .design-card {
-      background: var(--card);
-      border-radius: 20px;
-      border: 1px solid rgba(255, 255, 255, 0.04);
+      background: var(--bg-surface);
+      border-radius: var(--r-lg);
+      border: 1px solid var(--border-soft);
       overflow: hidden;
       cursor: pointer;
-      transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+      transition: all 0.28s var(--ease-out);
+      box-shadow: var(--shadow-sm);
+      display: flex;
+      flex-direction: column;
     }
     .design-card:hover {
-      transform: translateY(-4px);
-      border-color: var(--border);
-      box-shadow: 0 8px 24px var(--glow);
+      transform: translateY(-5px);
+      border-color: var(--magenta);
+      box-shadow: var(--shadow-md);
     }
     .design-img-frame {
-      height: 130px;
+      height: 150px;
       display: flex;
       align-items: center;
       justify-content: center;
-      background: rgba(255, 255, 255, 0.02);
+      background: var(--bg-card);
       position: relative;
     }
     .design-img-frame canvas {
-      width: 60px;
-      height: 90px;
+
+      width: 60px; height: 95px;
       object-fit: cover;
       border-radius: 12px;
-      box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4);
-      transform: rotate(-5deg);
+      box-shadow: 0 8px 20px rgba(36, 20, 31, 0.15);
+      transform: rotate(-3deg);
     }
     .design-info {
-      padding: 12px 16px;
-      background: rgba(10, 10, 18, 0.80);
-      border-top: 1px solid rgba(255, 255, 255, 0.03);
+      padding: 14px 16px;
+      background: var(--bg-surface);
+      border-top: 1px solid var(--border-soft);
     }
     .design-name {
-      font-size: 13px;
+      font-family: 'Libre Baskerville', serif;
+      font-size: 15px;
       font-weight: 700;
-      color: #fff;
+      color: var(--text);
     }
     .design-tag {
-      font-size: 10px;
-      color: var(--pink-soft);
-      margin-top: 2px;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-      font-weight: 600;
-    }
-
-    /* ── PHOTO PREVIEW OVERLAY ───────────────────────── */
-    #preview-overlay {
-      position: absolute;
-      inset: 0;
-      z-index: 80;
-      background: var(--bg);
-      display: none;
-      flex-direction: column;
-      animation: slideIn 0.35s cubic-bezier(0.16, 1, 0.3, 1);
-    }
-    #preview-overlay.active {
-      display: flex;
-    }
-    @keyframes slideIn {
-      from { transform: translateY(100%); }
-      to { transform: translateY(0); }
-    }
-    .preview-header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 20px 24px;
-    }
-    .preview-title {
-      font-family: 'Playfair Display', serif;
-      font-size: 24px;
-      color: #fff;
-    }
-    .preview-frame {
-      flex: 1;
-      margin: 0 24px 16px;
-      border-radius: 28px;
-      overflow: hidden;
-      border: 1px solid var(--border);
-      position: relative;
-      box-shadow: 0 10px 40px rgba(0,0,0,0.6);
-      background: #000;
-    }
-    #preview-img {
-      width: 100%;
-      height: 100%;
-      object-fit: contain;
-    }
-    .preview-corner {
-      position: absolute;
-      width: 24px;
-      height: 24px;
-      border-color: var(--pink-hot);
-    }
-    .preview-corner-tl { top:16px; left:16px; border-top: 3px solid; border-left: 3px solid; border-radius: 6px 0 0 0; }
-    .preview-corner-tr { top:16px; right:16px; border-top: 3px solid; border-right: 3px solid; border-radius: 0 6px 0 0; }
-    .preview-corner-bl { bottom:16px; left:16px; border-bottom: 3px solid; border-left: 3px solid; border-radius: 0 0 0 6px; }
-    .preview-corner-br { bottom:16px; right:16px; border-bottom: 3px solid; border-right: 3px solid; border-radius: 0 0 6px 0; }
-    
-    .preview-actions {
-      display: flex;
-      justify-content: space-around;
-      padding: 16px 24px 36px;
-      gap: 12px;
-    }
-    .preview-btn {
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 6px;
-      border-radius: 20px;
-      padding: 12px;
-      cursor: pointer;
-      font-family: 'Inter', sans-serif;
+      font-family: 'Epilogue', sans-serif;
       font-size: 11px;
-      color: var(--pink-soft);
-      font-weight: 700;
+      color: var(--magenta);
+      margin-top: 3px;
       text-transform: uppercase;
       letter-spacing: 0.8px;
-      background: rgba(255,255,255,0.05);
-      border: 1px solid rgba(255, 255, 255, 0.08);
-      transition: all 0.22s ease;
-    }
-    .preview-btn:hover {
-      border-color: var(--pink-hot);
-      background: rgba(255, 45, 120, 0.10);
-    }
-    .preview-btn-icon {
-      font-size: 20px;
-    }
-    .preview-btn.primary {
-      background: var(--pink-hot);
-      border-color: var(--pink-hot);
-      color: #fff;
-      box-shadow: 0 6px 20px rgba(255,45,120,0.4);
-    }
-    .preview-btn.primary:hover {
-      box-shadow: 0 8px 26px rgba(255,45,120,0.55);
-      transform: translateY(-1px);
-    }
-
-    /* ── CAROUSEL DESIGN PICKER ───────────────────────── */
-    .nail-carousel-container {
-      display: flex;
-      gap: 12px;
-      overflow-x: auto;
-      padding: 0 24px 8px;
-      scrollbar-width: none;
-      -ms-overflow-style: none;
-    }
-    .nail-carousel-container::-webkit-scrollbar { display: none; }
-    
-    .carousel-item {
-      flex-shrink: 0;
-      width: 66px;
-      background: rgba(14, 14, 28, 0.75);
-      border: 2px solid transparent;
-      border-radius: 18px;
-      padding: 6px 5px 8px;
-      cursor: pointer;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 6px;
-      transition: all 0.28s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-      position: relative;
-    }
-    .carousel-item.selected {
-      transform: translateY(-4px);
-      box-shadow: 0 6px 20px var(--glow);
-    }
-    .carousel-thumb-box {
-      width: 52px;
-      height: 78px;
-      border-radius: 12px;
-      overflow: hidden;
-      border: 1px solid rgba(255,255,255,0.06);
-      background: #11111e;
-      position: relative;
-    }
-    .carousel-thumb-box img {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-      display: block;
-    }
-    .carousel-check {
-      position: absolute;
-      top: 4px;
-      right: 4px;
-      width: 16px;
-      height: 16px;
-      border-radius: 50%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 8px;
-      color: #fff;
-      font-weight: 800;
-      box-shadow: 0 0 6px rgba(0,0,0,0.5);
-    }
-    .carousel-label {
-      font-size: 8px;
-      color: var(--muted);
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 0.3px;
-      text-align: center;
-      line-height: 1.2;
-      max-width: 54px;
-    }
-    .carousel-item.selected .carousel-label {
-      color: var(--pink-soft);
-    }
-
-    /* Toast messaging */
-    #toast {
-      position: fixed;
-      bottom: 125px;
-      left: 50%;
-      transform: translateX(-50%);
-      background: rgba(18, 18, 32, 0.95);
-      border: 1px solid var(--border);
-      border-radius: 30px;
-      padding: 10px 24px;
-      font-size: 13px;
-      color: var(--pink-soft);
       font-weight: 600;
-      box-shadow: 0 8px 30px rgba(0, 0, 0, 0.6);
-      z-index: 999;
-      display: none;
-      white-space: nowrap;
-      animation: toastIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
     }
-    @keyframes toastIn {
-      from { transform: translate(-50%, 15px); opacity: 0; }
-      to { transform: translate(-50%, 0); opacity: 1; }
-    }
-
-    /* Screen camera flash */
-    #flash-effect {
-      position: absolute;
-      inset: 0;
-      z-index: 90;
-      background: #fff;
+    /* Scroll Animations & Team */
+    .scroll-animate {
       opacity: 0;
-      pointer-events: none;
+      transform: translateY(30px);
+      transition: all 0.8s cubic-bezier(0.19, 1, 0.22, 1);
     }
-    .flash-active {
-      animation: flashAnim 0.35s ease-out;
+    .scroll-animate.in-view {
+      opacity: 1;
+      transform: translateY(0);
     }
-    @keyframes flashAnim {
-      0% { opacity: 0.95; }
-      100% { opacity: 0; }
+    .team-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 24px;
+      margin-top: 24px;
     }
-
-    /* Spinner loader */
-    .spinner {
-      width: 32px;
-      height: 32px;
-      border: 3px solid rgba(255, 45, 120, 0.15);
+    .team-card {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-soft);
+      border-radius: var(--r-xl);
+      padding: 32px 24px;
+      text-align: center;
+      box-shadow: var(--shadow-sm);
+      transition: transform 0.3s var(--ease-out), box-shadow 0.3s var(--ease-out);
+    }
+    .team-card:hover {
+      transform: translateY(-5px);
+      box-shadow: var(--shadow-md);
+      border-color: var(--magenta);
+    }
+    .team-avatar-img {
+      width: 100px;
+      height: 100px;
       border-radius: 50%;
-      border-top-color: var(--pink-hot);
-      animation: spin 1s infinite linear;
+      margin: 0 auto 16px;
+      border: 3px solid var(--border);
+      box-shadow: 0 8px 24px rgba(223, 55, 214, 0.2);
     }
-    @keyframes spin { to { transform: rotate(360deg); } }
+    .team-name {
+      font-family: 'Libre Baskerville', serif;
+      font-size: 20px;
+      color: var(--text);
+      margin-bottom: 6px;
+    }
+    .team-role {
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--magenta);
+      font-weight: 700;
+    }
   </style>
 </head>
+
+
 <body>
 
-  <!-- ── HIDDEN UPLOAD INPUT ── -->
+  <!-- HIDDEN FILE UPLOAD & TOAST -->
   <input type="file" id="hand-upload-input" accept="image/*" style="display: none;" onchange="handleHandUpload(event)" />
-
-  <!-- ── FLASH EFFECT ── -->
   <div id="flash-effect"></div>
-
-  <!-- ── TOAST ── -->
   <div id="toast"></div>
 
-  <!-- ── 1. EXPLORE SCREEN ────────────────────────────── -->
+  <!-- ══════════════════════════════════════════════════
+       GLOBAL APPLICATION HEADER
+  ═══════════════════════════════════════════════════ -->
+  <header class="app-header">
+    <a href="#" class="brand-title" onclick="switchTab('home')">
+      💅 SlayNails<span>.</span>
+    </a>
+    <div class="header-actions">
+      <button class="theme-toggle-btn" onclick="toggleTheme()" title="Toggle Dark / Light Mode">
+        🌙
+      </button>
+      <button class="btn-slay" onclick="switchTab('tryon')" style="padding: 9px 20px; font-size: 13px;">
+        💅 Try Live
+      </button>
+    </div>
+  </header>
+
+  <!-- ══════════════════════════════════════════════════
+       1. HOMEPAGE / EXPLORE SCREEN
+  ═══════════════════════════════════════════════════ -->
   <div id="screen-home" class="screen active">
-    <div class="home-header">
-      <div>
-        <div class="home-title">Explore</div>
-        <div class="home-sub">Virtual Nail Studio</div>
+    
+    <!-- Hero Section -->
+    <section class="hero-section">
+      <div class="hero-eyebrow">
+        <span>✨ AI NAIL STUDIO 🎀</span>
       </div>
-      <div class="brand-logo">💅</div>
-    </div>
-
-    <div class="hero-banner glass" onclick="switchTab('tryon')">
-      <span class="hero-icon">✨</span>
-      <div class="hero-text">
-        <h3>Live AI Try-On</h3>
-        <p>Overlay virtual designs onto your fingers in real-time</p>
+      <h1 class="hero-title">
+        Know Before <br />You <i>Slay.</i>
+      </h1>
+      <p class="hero-subtitle">
+        Real-time AI perspective virtual try-on. Overlay luxury nail art onto your hand in seconds before booking your appointment.
+      </p>
+      <div class="hero-btn-group">
+        <button class="btn-slay" onclick="switchTab('tryon')">
+          💅 Try Live Mirror
+        </button>
+        <button class="btn-outline-slay" onclick="switchTab('design')">
+          ✨ Explore Styles
+        </button>
       </div>
-      <span class="hero-arrow">›</span>
-    </div>
+    </section>
 
-    <div class="home-scroll">
-      <div class="section-title">Trending Styles</div>
-      
-      <div class="nail-card" onclick="goTryonWithDesign('hotpink')">
-        <div class="nail-card-hero" style="background: linear-gradient(135deg, #1b0a23, #FF2D78);">💖</div>
-        <div class="nail-card-footer">
+    <div class="content-container">
+
+      <!-- Trending Styles Carousel -->
+      <section>
+        <div class="section-head">
           <div>
-            <div class="nail-card-title">Hot Pink Gel</div>
-            <div class="nail-card-tag">Trending · Neon finish</div>
+            <h2 class="section-title-lg">Trending <span>Styles</span> 💖</h2>
           </div>
-          <button class="btn-pink" style="padding: 10px 20px; font-size: 12px;">Try On ✨</button>
+          <button class="nav-link" onclick="switchTab('design')">See all 17 →</button>
         </div>
-      </div>
 
-      <div class="nail-card" onclick="goTryonWithDesign('glazeddonut')">
-        <div class="nail-card-hero" style="background: linear-gradient(135deg, #2b1d28, #fdf5f2);">🍩</div>
-        <div class="nail-card-footer">
-          <div>
-            <div class="nail-card-title">Hailey Glazed Donut</div>
-            <div class="nail-card-tag">Viral · Pearlescent sheen</div>
+        <div class="trending-cards-grid">
+          <div class="slay-card" onclick="goTryonWithDesign('hotpink')">
+            <div class="slay-card-hero" style="background: linear-gradient(135deg, #FEC0FF 0%, #FF86E0 50%, #EE4FC5 100%);">
+              💖
+            </div>
+            <div class="slay-card-body">
+              <div>
+                <div class="slay-card-name">Hot Pink Gel</div>
+                <div class="slay-card-tag">Viral · High Gloss</div>
+              </div>
+              <button class="btn-slay" style="padding: 8px 16px; font-size: 12px;" onclick="event.stopPropagation(); goTryonWithDesign('hotpink')">Try On ✨</button>
+            </div>
           </div>
-          <button class="btn-pink" style="padding: 10px 20px; font-size: 12px;">Try On ✨</button>
-        </div>
-      </div>
-    </div>
 
-    <!-- Bottom Nav -->
-    <div class="bottom-nav">
-      <div class="bottom-nav-inner glass">
-        <button class="nav-tab active" onclick="switchTab('home')">
-          <div class="nav-tab-icon">🌐</div>
-          <span>Explore</span>
-        </button>
-        <button class="nav-tab" onclick="switchTab('tryon')">
-          <div class="nav-tab-icon">💅</div>
-          <span>Try On</span>
-        </button>
-        <button class="nav-tab" onclick="switchTab('design')">
-          <div class="nav-tab-icon">🎨</div>
-          <span>Designs</span>
-        </button>
-      </div>
-    </div>
-  </div>
-
-  <!-- ── 2. TRY-ON SCREEN (No Bottom Nav to prevent cutoff) ────────────────────────────── -->
-  <div id="screen-tryon" class="screen">
-    <!-- Camera video element (hidden, processed in JS) -->
-    <video id="camera-video" autoplay playsinline muted></video>
-
-    <!-- Main AR Pipeline Canvas -->
-    <canvas id="ar-canvas"></canvas>
-
-    <!-- Permission / Loading Overlay -->
-    <div id="perm-overlay">
-      <div class="perm-card glass">
-        <div class="perm-icon">📸</div>
-        <h2 class="perm-title">Camera & Photo</h2>
-        <p class="perm-body">
-          Select live camera tracking, or upload a photo of your hand from your device to overlay designs instantly.
-        </p>
-        <button class="btn-pink w-full" id="grant-btn" onclick="startCameraPipeline()">Enable Camera Live ✨</button>
-        <div style="margin: 14px 0 8px; color: var(--muted); font-size: 10px; text-transform: uppercase; letter-spacing: 1px; font-weight: 700;">— or —</div>
-        <button class="btn-pink w-full" onclick="triggerImageUpload()" style="background: rgba(255, 255, 255, 0.08); border: 1px solid rgba(255, 255, 255, 0.15); box-shadow: none;">Upload Photo 📤</button>
-      </div>
-    </div>
-
-    <!-- Top Overlay bar -->
-    <div id="tryon-topbar">
-      <div class="topbar-row">
-        <div style="display: flex; align-items: center; gap: 12px;">
-          <!-- Exit arrow -->
-          <button class="icon-btn" onclick="switchTab('home')" style="width: 36px; height: 36px; font-size: 14px;" title="Go Back">←</button>
-          <div>
-            <div class="topbar-logo">Nail<span>AR</span> Pro</div>
-            <div class="topbar-status">
-              <span class="status-dot"></span>
-              <span id="pipeline-status">Initializing AI Engine...</span>
+          <div class="slay-card" onclick="goTryonWithDesign('glazeddonut')">
+            <div class="slay-card-hero" style="background: linear-gradient(135deg, #FFF8FC 0%, #FC93E8 50%, #F8EEF8 100%);">
+              🍩
+            </div>
+            <div class="slay-card-body">
+              <div>
+                <div class="slay-card-name">Hailey Glazed Donut</div>
+                <div class="slay-card-tag">Pearlescent · Iconic</div>
+              </div>
+              <button class="btn-slay" style="padding: 8px 16px; font-size: 12px;" onclick="event.stopPropagation(); goTryonWithDesign('glazeddonut')">Try On ✨</button>
             </div>
           </div>
         </div>
-        <div style="display: flex; gap: 8px;">
-          <button class="icon-btn" id="cam-mode-btn" onclick="switchToCameraMode()" title="Switch to Live Camera" style="display: none;">📷</button>
-          <button class="icon-btn" onclick="triggerImageUpload()" title="Upload Hand Photo">📤</button>
-          <button class="icon-btn" id="flip-btn-ar" onclick="flipCamera()" title="Flip Camera">🔄</button>
+      </section>
+
+      <!-- Popular Collections Chips -->
+      <section>
+        <div class="section-head">
+          <h2 class="section-title-lg">Popular <span>Collections</span> 🌸</h2>
+        </div>
+        <div class="collections-chips">
+          <div class="collection-chip" onclick="goTryonWithDesign('french')">💎 Luxury</div>
+          <div class="collection-chip" onclick="goTryonWithDesign('nudestripe')">✨ Minimal</div>
+          <div class="collection-chip" onclick="goTryonWithDesign('milky')">👰 Bridal</div>
+          <div class="collection-chip" onclick="goTryonWithDesign('chrome')">🪞 Chrome</div>
+          <div class="collection-chip" onclick="goTryonWithDesign('emerald')">👁️ Cat Eye</div>
+          <div class="collection-chip" onclick="goTryonWithDesign('holo')">🌈 Holographic</div>
+        </div>
+      </section>
+
+      <!-- How It Works Section -->
+      <section>
+        <div class="section-head" style="justify-content: center; text-align: center;">
+          <h2 class="section-title-lg">How It <span>Works</span> 🎀</h2>
+        </div>
+        <div class="how-it-works-grid">
+          <div class="step-card">
+            <div class="step-num">1</div>
+            <h3 class="step-title">Upload / Cam</h3>
+            <p class="step-desc">Open live camera or upload a hand photo</p>
+          </div>
+          <div class="step-card">
+            <div class="step-num">2</div>
+            <h3 class="step-title">AI Detects</h3>
+            <p class="step-desc">MediaPipe tracks 21 hand landmarks instantly</p>
+          </div>
+          <div class="step-card">
+            <div class="step-num">3</div>
+            <h3 class="step-title">Try On</h3>
+            <p class="step-desc">Swap 17 styles in your personal beauty mirror</p>
+          </div>
+          <div class="step-card">
+            <div class="step-num">4</div>
+            <h3 class="step-title">Save & Slay</h3>
+            <p class="step-desc">Snapshot your favorite look to share or bring to tech</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- Our Story Section -->
+      <section>
+        <div class="story-card">
+          <div>
+            <h2 class="story-title serif">Built for the <i>Slay Culture.</i> 🎀</h2>
+            <p class="story-text">
+              SlayNails combines computer vision, perspective affine quad-warping, and specular gloss highlights to deliver real-time virtual try-ons. No guessing, no regret at the salon.
+            </p>
+          </div>
+          <div style="text-align: center; font-size: 84px;">
+            ✨💅🌸
+          </div>
+        </div>
+      </section>
+
+      <!-- Meet the Team -->
+      <section>
+        <div class="section-head">
+          <h2 class="section-title-lg">Meet the <span>Team</span> 👩‍💻</h2>
+        </div>
+        <div class="team-grid">
+          <div class="team-card scroll-animate">
+            <div class="team-avatar-img" style="background-image: url('nail-ar-pro/lib/beulah.png'); font-size: 40px; display: flex; align-items: center; justify-content: center; background-color: var(--bg-card); background-size: cover; background-position: center; color: transparent;">👑</div>
+            <h3 class="team-name">Beulah Deva</h3>
+            <div class="team-role">Lead Developer • AI Engineer</div>
+            <p style="font-size: 13.5px; color: var(--text-muted); margin-top: 12px; line-height: 1.6;">Led the end-to-end development of SlayNails, including frontend development, backend integration, AI-powered virtual nail try-on, MediaPipe hand tracking, UI/UX design, system architecture, testing, and deployment. Transformed the concept into a fully functional web application and crafted the overall user experience.</p>
+          </div>
+          <div class="team-card scroll-animate">
+            <div class="team-avatar-img" style="background-image: url('nail-ar-pro/lib/bhoomika.png'); font-size: 40px; display: flex; align-items: center; justify-content: center; background-color: var(--bg-card); background-size: cover; background-position: center; color: transparent;">🎨</div>
+            <h3 class="team-name">Bhoomika S J</h3>
+            <div class="team-role">Product Ideation & Research</div>
+            <p style="font-size: 13.5px; color: var(--text-muted); margin-top: 12px; line-height: 1.6;">Assisted with backend development and deployment of SlayNails, helping integrate core services, configure the application for deployment, and ensure a smooth and reliable launch. Also contributed to product discussions and refining the overall user experience.</p>
+          </div>
+        </div>
+      </section>
+
+    </div><!-- /content-container -->
+  </div>
+
+  <!-- ══════════════════════════════════════════════════
+       2. BEAUTY MIRROR VIRTUAL TRY-ON STUDIO
+  ═══════════════════════════════════════════════════ -->
+  <div id="screen-tryon" class="screen">
+
+    <!-- Studio Header -->
+    <div class="mirror-studio-header">
+      <div style="display: flex; align-items: center; gap: 12px;">
+        <button class="icon-btn-slay" onclick="switchTab('home')" style="width: 38px; height: 38px; font-size: 14px;">←</button>
+        <div>
+          <div style="font-family: 'Libre Baskerville', serif; font-size: 20px; font-weight: 700; color: var(--text);">
+            Beauty Mirror ✦
+          </div>
+          <div style="font-size: 10px; color: var(--magenta); font-weight: 600;" id="pipeline-status">
+            ✨ Looking gorgeous already!
+          </div>
         </div>
       </div>
-
-      <!-- Controls Panel -->
-      <div class="ar-controls-panel">
-        <div class="ar-sliders-row">
-          <div class="ar-pill">
-            <span class="ar-slider-label">opacity</span>
-            <input type="range" class="ar-slider" id="opacity-slider" min="50" max="100" value="92" />
-          </div>
-          <div class="ar-pill">
-            <span class="ar-slider-label">length</span>
-            <input type="range" class="ar-slider" id="length-slider" min="60" max="200" value="100" />
-          </div>
-          <div class="ar-pill">
-            <span class="ar-slider-label">width</span>
-            <input type="range" class="ar-slider" id="width-slider" min="50" max="160" value="100" />
-          </div>
-        </div>
-        
-        <!-- Shape Selection pills -->
-        <div class="shape-pills-row">
-          <span class="ar-slider-label" style="margin-right: 4px;">Shape:</span>
-          <button class="shape-pill active" data-shape="oval" onclick="selectNailShape('oval')">Oval</button>
-          <button class="shape-pill" data-shape="square" onclick="selectNailShape('square')">Square</button>
-          <button class="shape-pill" data-shape="almond" onclick="selectNailShape('almond')">Almond</button>
-          <button class="shape-pill" data-shape="coffin" onclick="selectNailShape('coffin')">Coffin</button>
-          <button class="shape-pill" data-shape="stiletto" onclick="selectNailShape('stiletto')">Stiletto</button>
-        </div>
-
-        <!-- Quick finger selection pills -->
-        <div class="finger-pills-row">
-          <span class="ar-slider-label" style="margin-right: 4px;">Fingers:</span>
-          <button class="finger-pill active" data-finger="thumb" onclick="toggleFinger('thumb')">Thumb</button>
-          <button class="finger-pill active" data-finger="index" onclick="toggleFinger('index')">Index</button>
-          <button class="finger-pill active" data-finger="middle" onclick="toggleFinger('middle')">Middle</button>
-          <button class="finger-pill active" data-finger="ring" onclick="toggleFinger('ring')">Ring</button>
-          <button class="finger-pill active" data-finger="pinky" onclick="toggleFinger('pinky')">Pinky</button>
-        </div>
+      <div style="display: flex; gap: 8px;">
+        <button class="icon-btn-slay" id="cam-mode-btn" onclick="switchToCameraMode()" style="display: none;">📷</button>
+        <button class="icon-btn-slay" onclick="triggerImageUpload()" title="Upload Hand Photo">📤</button>
+        <button class="icon-btn-slay" id="flip-btn-ar" onclick="flipCamera()" title="Flip Camera">🔄</button>
       </div>
     </div>
 
-    <!-- Bottom controls panel -->
-    <div id="tryon-bottom">
-      
-      <!-- Design carousel picker -->
-      <div class="carousel-section">
-        <div class="nail-carousel-container" id="nail-carousel">
-          <!-- Filled by JS -->
+    <!-- Beauty Mirror Centered Frame -->
+    <div class="beauty-mirror-wrapper">
+      <div class="beauty-mirror-card">
+        <video id="camera-video" autoplay playsinline muted></video>
+        <canvas id="ar-canvas"></canvas>
+
+        <div class="mirror-badge">
+          <span style="display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: var(--magenta); box-shadow: 0 0 8px var(--magenta);"></span>
+          AI Mirror Active
+        </div>
+
+        <!-- Permission Overlay (Inside Mirror) -->
+        <div id="perm-overlay">
+          <div class="perm-card">
+            <div class="perm-icon">📸</div>
+            <h2 class="perm-title">Beauty Mirror</h2>
+            <p class="perm-body">
+              Enable your live camera or upload a hand photo to overlay real-time nail art in your personal mirror.
+            </p>
+            <button class="btn-slay" id="grant-btn" onclick="startCameraPipeline()" style="width: 100%;">
+              Enable Live Mirror ✨
+            </button>
+            <div style="margin: 12px 0 8px; font-size: 11px; color: var(--text-dim);">— or —</div>
+            <button class="btn-outline-slay" onclick="triggerImageUpload()" style="width: 100%;">
+              Upload Hand Photo 📤
+            </button>
+          </div>
         </div>
       </div>
 
-      <!-- Shutter snapshot bar -->
-      <div class="shutter-row">
-        <button class="icon-btn" onclick="switchTab('design')" style="width: 48px; height: 48px; font-size: 18px;">🎨</button>
-        
-        <div class="shutter-btn-wrap" onclick="takeSnapshot()">
-          <div class="shutter-inner"></div>
+      <!-- Quick Trending Colors Bar -->
+      <div class="quick-palette-bar">
+        <div class="color-chip-pill active" onclick="goTryonWithDesign('french')">
+          <div class="color-chip-dot" style="background: #FFF8FC; border: 1px solid #DF37D6;"></div>
+          <span>French Classic</span>
+        </div>
+        <div class="color-chip-pill" onclick="goTryonWithDesign('hotpink')">
+          <div class="color-chip-dot" style="background: #EE4FC5;"></div>
+          <span>Hot Pink Gel</span>
+        </div>
+        <div class="color-chip-pill" onclick="goTryonWithDesign('glazeddonut')">
+          <div class="color-chip-dot" style="background: linear-gradient(135deg, #FFF, #FC93E8);"></div>
+          <span>Glazed Donut</span>
+        </div>
+        <div class="color-chip-pill" onclick="goTryonWithDesign('chrome')">
+          <div class="color-chip-dot" style="background: #D4D4D4;"></div>
+          <span>Chrome Silver</span>
+        </div>
+        <div class="color-chip-pill" onclick="goTryonWithDesign('emerald')">
+          <div class="color-chip-dot" style="background: #0B6640;"></div>
+          <span>Emerald Velvet</span>
+        </div>
+        <div class="color-chip-pill" onclick="toggleFullPaletteDrawer()">
+          <span>🎨 More Styles (17) →</span>
+        </div>
+      </div>
+
+      <!-- Collapsible Customize Drawer -->
+      <div class="customize-drawer" id="customize-drawer">
+        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-soft); padding-bottom: 8px;">
+          <div style="font-family: 'Libre Baskerville', serif; font-size: 15px; font-weight: 700; color: var(--text);">
+            ✨ Mirror Adjustments
+          </div>
+          <button class="nav-link" onclick="toggleCustomizeDrawer()">Close ✕</button>
         </div>
 
-        <button class="icon-btn" onclick="toggleInfoToast()" style="width: 48px; height: 48px; font-size: 18px;">❓</button>
+        <div class="ar-controls-panel">
+          <div class="ar-sliders-row">
+            <div class="ar-pill">
+              <span class="ar-slider-label">Opacity</span>
+              <input type="range" class="ar-slider" id="opacity-slider" min="50" max="100" value="92" />
+            </div>
+            <div class="ar-pill">
+              <span class="ar-slider-label">Length</span>
+              <input type="range" class="ar-slider" id="length-slider" min="60" max="200" value="100" />
+            </div>
+            <div class="ar-pill">
+              <span class="ar-slider-label">Width</span>
+              <input type="range" class="ar-slider" id="width-slider" min="50" max="160" value="100" />
+            </div>
+          </div>
+
+          <div class="shape-pills-row">
+            <span class="ar-slider-label" style="margin-right: 4px; white-space: nowrap;">Shape:</span>
+            <button class="shape-pill active" data-shape="oval"     onclick="selectNailShape('oval')">Oval</button>
+            <button class="shape-pill"        data-shape="square"   onclick="selectNailShape('square')">Square</button>
+            <button class="shape-pill"        data-shape="almond"   onclick="selectNailShape('almond')">Almond</button>
+            <button class="shape-pill"        data-shape="coffin"   onclick="selectNailShape('coffin')">Coffin</button>
+            <button class="shape-pill"        data-shape="stiletto" onclick="selectNailShape('stiletto')">Stiletto</button>
+          </div>
+
+          <div class="finger-pills-row">
+            <span class="ar-slider-label" style="margin-right: 4px; white-space: nowrap;">Fingers:</span>
+            <button class="finger-pill active" data-finger="thumb"  onclick="toggleFinger('thumb')">Thumb</button>
+            <button class="finger-pill active" data-finger="index"  onclick="toggleFinger('index')">Index</button>
+            <button class="finger-pill active" data-finger="middle" onclick="toggleFinger('middle')">Middle</button>
+            <button class="finger-pill active" data-finger="ring"   onclick="toggleFinger('ring')">Ring</button>
+            <button class="finger-pill active" data-finger="pinky"  onclick="toggleFinger('pinky')">Pinky</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Action Control Bar -->
+      <div class="mirror-action-bar">
+        <button class="btn-slay" onclick="takeSnapshot()">
+          📷 Capture Look
+        </button>
+        <button class="btn-outline-slay" onclick="toggleCustomizeDrawer()">
+          ✨ Customize
+        </button>
+        <button class="btn-outline-slay" onclick="toggleFullPaletteDrawer()">
+          🎨 Palette
+        </button>
+      </div>
+
+    </div><!-- /beauty-mirror-wrapper -->
+
+  </div><!-- /screen-tryon -->
+
+  <!-- Full Makeup Palette Sliding Sheet Drawer -->
+  <div id="full-palette-drawer">
+    <div class="palette-sheet-content">
+      <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-soft); padding-bottom: 12px;">
+        <div>
+          <h2 style="font-family: 'Libre Baskerville', serif; font-size: 20px; font-weight: 700; color: var(--text);">
+            Full Makeup Palette 🎨
+          </h2>
+          <p style="font-size: 12px; color: var(--text-muted);">Select any design to apply to your mirror</p>
+        </div>
+        <button class="icon-btn-slay" onclick="toggleFullPaletteDrawer()">✕</button>
+      </div>
+
+      <div class="nail-carousel-container" id="nail-carousel">
+        <!-- Filled programmatically by JS -->
       </div>
     </div>
   </div>
 
-  <!-- ── 3. GALLERY / DESIGNS SCREEN ──────────────────── -->
+  <!-- ══════════════════════════════════════════════════
+       3. DESIGNS GALLERY SCREEN
+  ═══════════════════════════════════════════════════ -->
   <div id="screen-design" class="screen">
-    <div class="home-header">
-      <div>
-        <div class="home-title">Artisan Designs</div>
-        <div class="home-sub">Choose your custom look</div>
-      </div>
-      <div class="brand-logo" style="background: linear-gradient(135deg, #ab47bc, #8800ff)">🎨</div>
+    <div style="padding: 24px 24px 16px;">
+      <h1 class="hero-title" style="font-size: 32px; margin-bottom: 4px;">17 Luxury <i>Styles</i></h1>
+      <p style="font-size: 13px; color: var(--text-muted);">Choose a design to launch instant AI try-on</p>
     </div>
 
     <div class="design-grid" id="design-catalogue-grid">
       <!-- Filled programmatically by JS -->
     </div>
-
-    <!-- Bottom Nav -->
-    <div class="bottom-nav">
-      <div class="bottom-nav-inner glass">
-        <button class="nav-tab" onclick="switchTab('home')">
-          <div class="nav-tab-icon">🌐</div>
-          <span>Explore</span>
-        </button>
-        <button class="nav-tab" onclick="switchTab('tryon')">
-          <div class="nav-tab-icon">💅</div>
-          <span>Try On</span>
-        </button>
-        <button class="nav-tab active" onclick="switchTab('design')">
-          <div class="nav-tab-icon">🎨</div>
-          <span>Designs</span>
-        </button>
-      </div>
-    </div>
   </div>
 
-  <!-- ── 4. SNAPSHOT PREVIEW SCREEN ───────────────────── -->
+  <!-- ══════════════════════════════════════════════════
+       4. SNAPSHOT PREVIEW OVERLAY
+  ═══════════════════════════════════════════════════ -->
   <div id="preview-overlay">
     <div class="preview-header">
-      <button class="icon-btn" onclick="closePreviewOverlay()">←</button>
-      <div class="preview-title">Your Look ✦</div>
+      <button class="icon-btn-slay" onclick="closePreviewOverlay()">←</button>
+      <div style="font-family: 'Libre Baskerville', serif; font-size: 20px; font-weight: 700; color: var(--text);">
+        Your Slay <span>💖</span>
+      </div>
       <div style="width: 44px;"></div>
     </div>
-    
+
     <div class="preview-frame">
       <img id="preview-img" src="" alt="Captured Try-On View" />
-      <div class="preview-corner preview-corner-tl"></div>
-      <div class="preview-corner preview-corner-tr"></div>
-      <div class="preview-corner preview-corner-bl"></div>
-      <div class="preview-corner preview-corner-br"></div>
     </div>
 
-    <!-- Mobile Long Press Hint -->
-    <div id="mobile-save-hint" style="text-align: center; font-size: 11px; color: var(--muted); margin: -4px 24px 10px; font-weight: 500;">
-      💡 Mobile user? Tap & hold the image above to save directly!
+    <div style="display: flex; justify-content: center; gap: 12px; padding: 16px 24px 32px;">
+      <button class="btn-outline-slay" onclick="closePreviewOverlay()">🔄 Retake</button>
+      <button class="btn-slay" onclick="downloadSnapshot()">💾 Save Look</button>
     </div>
+  </div>
 
-    <div class="preview-actions">
-      <button class="preview-btn" onclick="closePreviewOverlay()">
-        <span class="preview-btn-icon">🔄</span>Retake
+  <!-- ══════════════════════════════════════════════════
+       FLOATING BOTTOM NAVIGATION
+  ═══════════════════════════════════════════════════ -->
+  <div class="bottom-nav">
+    <div class="bottom-nav-inner">
+      <button class="nav-tab active" onclick="switchTab('home')">
+        <span class="nav-tab-icon">🌐</span>
+        <span>Explore</span>
       </button>
-      <button class="preview-btn primary" onclick="downloadSnapshot()">
-        <span class="preview-btn-icon">💾</span>Save Look
+      <button class="nav-tab" onclick="switchTab('tryon')">
+        <span class="nav-tab-icon">💅</span>
+        <span>Try Live</span>
       </button>
-      <button class="preview-btn" onclick="switchTab('design'); closePreviewOverlay();">
-        <span class="preview-btn-icon">🎨</span>Designs
+      <button class="nav-tab" onclick="switchTab('design')">
+        <span class="nav-tab-icon">🎨</span>
+        <span>Gallery</span>
       </button>
     </div>
   </div>
+
 
   <!-- ══════════════════════════════════════════════════
        CORE AR ENGINE & APPLICATION SCRIPTS
@@ -1739,25 +2120,45 @@
 
     let detectedLandmarks = [];
 
+    function toggleTheme() {
+      document.body.classList.toggle('dark-theme');
+      const isDark = document.body.classList.contains('dark-theme');
+      const toggleBtn = document.querySelector('.theme-toggle-btn');
+      if (toggleBtn) {
+        toggleBtn.textContent = isDark ? '☀️' : '🌙';
+      }
+      showToast(isDark ? '🌙 Dark Mode Activated' : '☀️ Light Mode Activated');
+    }
+
     // Init App
     window.addEventListener('DOMContentLoaded', () => {
       initAllProgrammaticDesigns();
       buildCarouselUI();
       buildCatalogueGridUI();
       
-      // Sliders listeners
-      document.getElementById('opacity-slider').addEventListener('input', (e) => {
-        currentOpacity = Number(e.target.value) / 100.0;
-      });
-      document.getElementById('length-slider').addEventListener('input', (e) => {
-        nailLengthScale = Number(e.target.value) / 100.0;
-      });
-      document.getElementById('width-slider').addEventListener('input', (e) => {
-        nailWidthScale = Number(e.target.value) / 100.0;
-      });
+      // Sliders listeners with null safety
+      const opSlider = document.getElementById('opacity-slider');
+      if (opSlider) {
+        opSlider.addEventListener('input', (e) => {
+          currentOpacity = Number(e.target.value) / 100.0;
+        });
+      }
+      const lenSlider = document.getElementById('length-slider');
+      if (lenSlider) {
+        lenSlider.addEventListener('input', (e) => {
+          nailLengthScale = Number(e.target.value) / 100.0;
+        });
+      }
+      const widSlider = document.getElementById('width-slider');
+      if (widSlider) {
+        widSlider.addEventListener('input', (e) => {
+          nailWidthScale = Number(e.target.value) / 100.0;
+        });
+      }
 
       switchTab('home');
     });
+
 
     // Screen tab controller
     function switchTab(tabId) {
@@ -1969,6 +2370,7 @@
       const statusEl = document.getElementById('pipeline-status');
 
       statusEl.textContent = 'Initializing Camera...';
+      document.getElementById('perm-overlay').classList.add('hidden');
 
       try {
         if (localStream) {
@@ -1989,41 +2391,41 @@
         video.srcObject = localStream;
         await video.play();
 
-        document.getElementById('perm-overlay').classList.add('hidden');
         statusEl.textContent = 'Loading AI Tracking Model...';
       } catch (err) {
-        console.error('Camera startup error:', err);
-        statusEl.textContent = 'Camera Access Denied';
-        document.getElementById('perm-overlay').classList.remove('hidden');
-        return;
+        console.warn('Camera startup notice (permission or no hardware webcam):', err);
+        statusEl.textContent = 'Interactive Hand Mirror ✨';
+        showToast('💡 Camera offline — interactive hand try-on mode active!');
       }
 
       await initMediaPipeEngine();
 
       statusEl.textContent = 'AR Engine Active ✨';
-      showToast('✨ Live AR active! Present your hand.');
 
       if (cameraController) {
-        cameraController.stop();
+        try { cameraController.stop(); } catch(e){}
       }
 
-      cameraController = new Camera(video, {
-        onFrame: async () => {
-          if (mediaPipeReady && activeTab === 'tryon' && arMode === 'camera') {
-            try {
-              await handsEstimator.send({ image: video });
-            } catch (e) {}
-          }
-        },
-        width: 1280,
-        height: 720
-      });
+      try {
+        cameraController = new Camera(video, {
+          onFrame: async () => {
+            if (mediaPipeReady && activeTab === 'tryon' && arMode === 'camera' && localStream) {
+              try {
+                await handsEstimator.send({ image: video });
+              } catch (e) {}
+            }
+          },
+          width: 1280,
+          height: 720
+        });
 
-      cameraController.start();
+        cameraController.start();
+      } catch (e) {}
 
       if (frameRequestId) cancelAnimationFrame(frameRequestId);
       frameRequestId = requestAnimationFrame(canvasRenderLoop);
     }
+
 
     function stopCameraPipeline() {
       if (frameRequestId) {
@@ -2338,6 +2740,20 @@
       }
     }
 
+    function toggleCustomizeDrawer() {
+      const drawer = document.getElementById('customize-drawer');
+      if (drawer) {
+        drawer.classList.toggle('active');
+      }
+    }
+
+    function toggleFullPaletteDrawer() {
+      const drawer = document.getElementById('full-palette-drawer');
+      if (drawer) {
+        drawer.classList.toggle('active');
+      }
+    }
+
     function closePreviewOverlay() {
       document.getElementById('preview-overlay').classList.remove('active');
       capturedDataUrl = "";
@@ -2348,13 +2764,27 @@
       
       const link = document.createElement('a');
       link.href = capturedDataUrl;
-      link.download = `nailar-tryon-look-${Date.now()}.jpg`;
+      link.download = `slaynails-look-${Date.now()}.jpg`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
       
       showToast('💾 Saved to downloads successfully!');
     }
+
+    // Scroll Animations Observer
+    const scrollObserver = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          entry.target.classList.add('in-view');
+        }
+      });
+    }, { threshold: 0.15, rootMargin: "0px 0px -40px 0px" });
+    
+    document.querySelectorAll('.scroll-animate').forEach(el => {
+      scrollObserver.observe(el);
+    });
   </script>
 </body>
 </html>
+
