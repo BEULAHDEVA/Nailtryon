@@ -1081,6 +1081,56 @@
       font-weight: 700;
     }
     /* ══════════════════════════════════════════════════════════
+       FLOATING BOTTOM NAVIGATION
+    ══════════════════════════════════════════════════════════ */
+    .bottom-nav {
+      position: fixed;
+      bottom: 24px;
+      left: 0;
+      width: 100%;
+      z-index: 150;
+      display: flex;
+      justify-content: center;
+      pointer-events: none;
+    }
+    .bottom-nav-inner {
+      background: var(--glass);
+      backdrop-filter: blur(20px) saturate(180%);
+      -webkit-backdrop-filter: blur(20px) saturate(180%);
+      border: 1px solid var(--border);
+      border-radius: var(--r-full);
+      display: flex;
+      padding: 6px 12px;
+      gap: 8px;
+      box-shadow: var(--shadow-lg), 0 0 20px rgba(223, 55, 214, 0.15);
+      pointer-events: auto;
+    }
+    .nav-tab {
+      background: transparent;
+      border: none;
+      padding: 10px 18px;
+      border-radius: var(--r-full);
+      font-family: 'Epilogue', sans-serif;
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--text-muted);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.25s var(--ease-spring);
+    }
+    .nav-tab:hover {
+      color: var(--magenta);
+      background: var(--bg-card);
+    }
+    .nav-tab.active {
+      color: #fff;
+      background: var(--grad-primary);
+      box-shadow: var(--shadow-sm);
+    }
+
+    /* ══════════════════════════════════════════════════════════
        MOBILE RESPONSIVENESS
     ══════════════════════════════════════════════════════════ */
     @media (max-width: 768px) {
